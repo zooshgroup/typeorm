@@ -16,7 +16,6 @@ import {TableColumn} from "../../schema-builder/table/TableColumn";
 import {EntityMetadata} from "../../metadata/EntityMetadata";
 import {OrmUtils} from "../../util/OrmUtils";
 import {ApplyValueTransformers} from "../../util/ApplyValueTransformers";
-import { OperationNotSupportedError } from '../../error/OperationNotSupportedError';
 
 /**
  * Organizes communication with PostgreSQL DBMS.
@@ -476,8 +475,7 @@ export class HanaColumnDriver implements Driver {
      * E.g. "mySchema"."myTable"
      */
     buildTableName(tableName: string, schema?: string): string {
-        throw new OperationNotSupportedError();
-        //return schema ? `${schema.toUpperCase()}.${tableName.toUpperCase()}` : tableName.toUpperCase();
+        return schema ? `"${schema}"."${tableName}"` : tableName;
     }
 
     /**
@@ -600,7 +598,31 @@ export class HanaColumnDriver implements Driver {
      * Creates column type definition including length, precision and scale
      */
     createFullType(column: TableColumn): string {
-        throw new OperationNotSupportedError();
+        let type = column.type;
+
+ /* TODO ---------
+        // used 'getColumnLength()' method, because in Oracle column length is required for some data types.
+        if (this.getColumnLength(column)) {
+            type += `(${this.getColumnLength(column)})`;
+
+        } else if (column.precision !== null && column.precision !== undefined && column.scale !== null && column.scale !== undefined) {
+            type += "(" + column.precision + "," + column.scale + ")";
+
+        } else if (column.precision !== null && column.precision !== undefined) {
+            type += "(" + column.precision + ")";
+        }
+
+        if (column.type === "timestamp with time zone") {
+            type = "TIMESTAMP" + (column.precision !== null && column.precision !== undefined ? "(" + column.precision + ")" : "") + " WITH TIME ZONE";
+
+        } else if (column.type === "timestamp with local time zone") {
+            type = "TIMESTAMP" + (column.precision !== null && column.precision !== undefined ? "(" + column.precision + ")" : "") + " WITH LOCAL TIME ZONE";
+        }
+
+        if (column.isArray)
+            type += " array"; */
+
+        return type;
     }
 
     /**
@@ -645,7 +667,24 @@ export class HanaColumnDriver implements Driver {
      * and returns only changed.
      */
     findChangedColumns(tableColumns: TableColumn[], columnMetadatas: ColumnMetadata[]): ColumnMetadata[] {
-        throw new OperationNotSupportedError();
+        // TODO (from Oracle)
+        return columnMetadatas.filter(columnMetadata => {
+            const tableColumn = tableColumns.find(c => c.name === columnMetadata.databaseName);
+            if (!tableColumn)
+                return false; // we don't need new columns, we only need exist and changed
+
+            return tableColumn.name !== columnMetadata.databaseName
+                || tableColumn.type !== this.normalizeType(columnMetadata)
+                || tableColumn.length !== columnMetadata.length
+                || tableColumn.precision !== columnMetadata.precision
+                || tableColumn.scale !== columnMetadata.scale
+                // || tableColumn.comment !== columnMetadata.comment || // todo
+                || this.normalizeDefault(columnMetadata) !== tableColumn.default
+                || tableColumn.isPrimary !== columnMetadata.isPrimary
+                || tableColumn.isNullable !== columnMetadata.isNullable
+                || tableColumn.isUnique !== this.normalizeIsUnique(columnMetadata)
+                || (columnMetadata.generationStrategy !== "uuid" && tableColumn.isGenerated !== columnMetadata.isGenerated);
+        });
     }
     
     /**

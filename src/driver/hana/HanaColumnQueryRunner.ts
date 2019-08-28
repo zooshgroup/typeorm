@@ -18,6 +18,7 @@ import { IsolationLevel } from "../types/IsolationLevel";
 import { TableExclusion } from "../../schema-builder/table/TableExclusion";
 import { Broadcaster } from "../../subscriber/Broadcaster";
 import { OperationNotSupportedError } from '../../error/OperationNotSupportedError';
+import { ObjectLiteral } from '../../common/ObjectLiteral';
 
 /**
  * Runs queries on a single mysql database connection.
@@ -225,7 +226,33 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      * Creates a new table.
      */
     async createTable(table: Table, ifNotExist: boolean = false, createForeignKeys: boolean = true): Promise<void> {
-        throw new OperationNotSupportedError();
+        if (ifNotExist) {
+            const isTableExist = await this.hasTable(table);
+            if (isTableExist) return Promise.resolve();
+        }
+        const upQueries: Query[] = [];
+        const downQueries: Query[] = [];
+
+        upQueries.push(this.createTableSql(table, createForeignKeys));
+        downQueries.push(this.dropTableSql(table));
+
+/*   TODO --------------
+      // if createForeignKeys is true, we must drop created foreign keys in down query.
+        // createTable does not need separate method to create foreign keys, because it create fk's in the same query with table creation.
+        if (createForeignKeys)
+            table.foreignKeys.forEach(foreignKey => downQueries.push(this.dropForeignKeySql(table, foreignKey)));
+
+        if (createIndices) {
+            table.indices.forEach(index => {
+                // new index may be passed without name. In this case we generate index name manually.
+                if (!index.name)
+                    index.name = this.connection.namingStrategy.indexName(table.name, index.columnNames, index.where);
+                upQueries.push(this.createIndexSql(table, index));
+                downQueries.push(this.dropIndexSql(index));
+            });
+        } */
+
+        await this.executeQueries(upQueries, downQueries);
     }
 
     /**
@@ -480,7 +507,26 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      * (because it can clear all your database).
      */
     async clearDatabase(database?: string): Promise<void> {
-        throw new OperationNotSupportedError();
+        const currentSchemaQuery = await this.query(`SELECT CURRENT_SCHEMA FROM DUMMY`);
+        const currentSchema = currentSchemaQuery[0]["CURRENT_SCHEMA"];
+
+        await this.startTransaction();
+        try {
+            const dropViewsQuery = `SELECT 'DROP VIEW "' || SCHEMA_NAME || '"."' || VIEW_NAME || '"' AS "query" FROM "VIEWS" WHERE SCHEMA_NAME = '${currentSchema}'`;
+            const dropViewQueries: ObjectLiteral[] = await this.query(dropViewsQuery);
+            await Promise.all(dropViewQueries.map(query => this.query(query["query"])));
+
+            const dropTablesQuery = `SELECT 'DROP TABLE "' || SCHEMA_NAME || '"."' || TABLE_NAME || '" CASCADE' AS "query" FROM "TABLES" WHERE SCHEMA_NAME = '${currentSchema}'`;
+            const dropTableQueries: ObjectLiteral[] = await this.query(dropTablesQuery);
+            await Promise.all(dropTableQueries.map(query => this.query(query["query"])));
+            await this.commitTransaction();
+
+        } catch (error) {
+            try { // we throw original error even if rollback thrown an error
+                await this.rollbackTransaction();
+            } catch (rollbackError) { }
+            throw error;
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -521,14 +567,37 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      * Builds create table sql
      */
     protected createTableSql(table: Table, createForeignKeys?: boolean): Query {
-        throw new OperationNotSupportedError();
+
+        const columnDefinitions = table.columns.map(column => this.buildCreateColumnSql(column)).join(", ");
+        let sql = `CREATE COLUMN TABLE ${table.name} (${columnDefinitions}`;
+        //  TODO constraints, refrences, etc.
+        sql += `)`;
+        return new Query(sql);
     }
+
+     /**
+     * Builds a query for create column.
+     */
+    protected buildCreateColumnSql(column: TableColumn) {
+        let c = `"${column.name}" ` + this.connection.driver.createFullType(column);
+        if (column.default !== undefined && column.default !== null) // DEFAULT must be placed before NOT NULL
+            c += " DEFAULT " + column.default;
+        if (column.isNullable !== true && !column.isGenerated) // NOT NULL is not supported with GENERATED
+            c += " NOT NULL";
+        if (column.isGenerated === true && column.generationStrategy === "increment")
+            c += " GENERATED ALWAYS AS IDENTITY";
+
+        return c;
+    }
+
 
     /**
      * Builds drop table sql
      */
     protected dropTableSql(tableOrName: Table | string): Query {
-        throw new OperationNotSupportedError();
+        const tableName = tableOrName instanceof Table ? tableOrName.name : `\"${tableOrName}\"`;
+        const query = `DROP TABLE ${tableName}`;
+        return new Query(query);
     }
 
     protected createViewSql(view: View): Query {
@@ -603,13 +672,6 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      * Escapes given table or view path.
      */
     protected escapePath(target: Table | View | string, disableEscape?: boolean): string {
-        throw new OperationNotSupportedError();
-    }
-
-    /**
-     * Builds a part of query to create/change a column.
-     */
-    protected buildCreateColumnSql(column: TableColumn, skipPrimary: boolean, skipName: boolean = false) {
         throw new OperationNotSupportedError();
     }
 
