@@ -15,4 +15,5 @@ export type DatabaseType =
     "mssql"|
     "mongodb"|
     "aurora-data-api"|
-    "expo";
+    "expo"|
+    "hana-column";

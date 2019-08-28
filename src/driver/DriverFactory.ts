@@ -8,6 +8,7 @@ import {CordovaDriver} from "./cordova/CordovaDriver";
 import {ReactNativeDriver} from "./react-native/ReactNativeDriver";
 import {NativescriptDriver} from "./nativescript/NativescriptDriver";
 import {SqljsDriver} from "./sqljs/SqljsDriver";
+import {HanaColumnDriver} from "./hana/HanaColumnDriver";
 import {MysqlDriver} from "./mysql/MysqlDriver";
 import {PostgresDriver} from "./postgres/PostgresDriver";
 import {ExpoDriver} from "./expo/ExpoDriver";
@@ -54,6 +55,8 @@ export class DriverFactory {
                 return new ExpoDriver(connection);
             case "aurora-data-api":
                 return new AuroraDataApiDriver(connection);
+            case "hana-column":
+                return new HanaColumnDriver(connection);
             default:
                 throw new MissingDriverError(type);
         }

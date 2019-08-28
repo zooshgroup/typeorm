@@ -11,6 +11,7 @@ import {ReactNativeConnectionOptions} from "../driver/react-native/ReactNativeCo
 import {NativescriptConnectionOptions} from "../driver/nativescript/NativescriptConnectionOptions";
 import {ExpoConnectionOptions} from "../driver/expo/ExpoConnectionOptions";
 import {AuroraDataApiConnectionOptions} from "../driver/aurora-data-api/AuroraDataApiConnectionOptions";
+import {HanaConnectionOptions} from "../driver/hana/HanaConnectionOptions";
 
 
 /**
@@ -31,4 +32,5 @@ export type ConnectionOptions =
     SqljsConnectionOptions|
     MongoConnectionOptions|
     AuroraDataApiConnectionOptions|
-    ExpoConnectionOptions;
+    ExpoConnectionOptions|
+    HanaConnectionOptions;
