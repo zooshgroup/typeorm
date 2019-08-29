@@ -185,8 +185,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      * Checks if table with the given name exist in the database.
      */
     async hasTable(tableOrName: Table | string): Promise<boolean> {
-        const currentSchemaQuery = await this.query(`SELECT CURRENT_SCHEMA FROM DUMMY`);
-        const currentSchema = currentSchemaQuery[0]["CURRENT_SCHEMA"];
+        const currentSchema = await this.getCurrentSchema();
 
         const tableName = tableOrName instanceof Table ? tableOrName.name : `\"${tableOrName}\"`;
         const sql = `SELECT "TABLE_NAME" FROM "TABLES" WHERE "TABLE_NAME" = '${tableName}' AND SCHEMA_NAME = '${currentSchema}'`;
@@ -530,8 +529,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      * (because it can clear all your database).
      */
     async clearDatabase(database?: string): Promise<void> {
-        const currentSchemaQuery = await this.query(`SELECT CURRENT_SCHEMA FROM DUMMY`);
-        const currentSchema = currentSchemaQuery[0]["CURRENT_SCHEMA"];
+        const currentSchema = await this.getCurrentSchema();
 
         await this.startTransaction();
         try {
@@ -576,8 +574,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
         if (!tableNames || !tableNames.length)
             return [];
 
-        const currentSchemaQuery = await this.query(`SELECT CURRENT_SCHEMA FROM DUMMY`);
-        const currentSchema = currentSchemaQuery[0]["CURRENT_SCHEMA"];
+        const currentSchema = await this.getCurrentSchema();
 
         // load tables, columns, indices and foreign keys
         const tableNamesString = tableNames.map(name => "'" + (name.startsWith(currentSchema + ".") ? name.substring(currentSchema.length + 1) : name)  + "'").join(", ");
@@ -764,4 +761,8 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
         throw new OperationNotSupportedError();
     }
 
+    protected async getCurrentSchema(): Promise<string> {
+        const currentSchemaQuery = await this.query(`SELECT CURRENT_SCHEMA FROM DUMMY`);
+        return currentSchemaQuery[0]["CURRENT_SCHEMA"];
+    }
 }
