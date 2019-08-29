@@ -5,12 +5,12 @@ export type PrimaryGeneratedColumnType = "int" // mysql, mssql, oracle, sqlite
     |"int2" // postgres, sqlite, cockroachdb
     |"int4" // postgres, cockroachdb
     |"int8" // postgres, sqlite, cockroachdb
-    |"integer" // postgres, oracle, sqlite, mysql, cockroachdb
-    |"tinyint" // mysql, mssql, sqlite
-    |"smallint" // mysql, postgres, mssql, oracle, sqlite, cockroachdb
+    |"integer" // postgres, oracle, sqlite, mysql, cockroachdb, hana
+    |"tinyint" // mysql, mssql, sqlite, hana
+    |"smallint" // mysql, postgres, mssql, oracle, sqlite, cockroachdb, hana
     |"mediumint" // mysql, sqlite
-    |"bigint" // mysql, postgres, mssql, sqlite, cockroachdb
-    |"dec" // oracle, mssql
+    |"bigint" // mysql, postgres, mssql, sqlite, cockroachdb, hana
+    |"dec" // oracle, mssql, hana
     |"decimal" // mysql, postgres, mssql, sqlite
     |"fixed" // mysql
     |"numeric" // postgres, mssql, sqlite
@@ -26,22 +26,22 @@ export type SpatialColumnType = "geometry" // postgres
 /**
  * Column types where precision and scale properties are used.
  */
-export type WithPrecisionColumnType = "float" // mysql, mssql, oracle, sqlite
-    |"double" // mysql, sqlite
+export type WithPrecisionColumnType = "float" // mysql, mssql, oracle, sqlite, hana
+    |"double" // mysql, sqlite, hana
     |"dec" // oracle, mssql, mysql
     |"decimal" // mysql, postgres, mssql, sqlite
     |"fixed" // mysql
     |"numeric" // postgres, mssql, sqlite, mysql
-    |"real" // mysql, postgres, mssql, oracle, sqlite, cockroachdb
+    |"real" // mysql, postgres, mssql, oracle, sqlite, cockroachdb, hana
     |"double precision" // postgres, oracle, sqlite, mysql, cockroachdb
     |"number" // oracle
     |"datetime" // mssql, mysql, sqlite
     |"datetime2" // mssql
     |"datetimeoffset" // mssql
-    |"time" // mysql, postgres, mssql, cockroachdb
+    |"time" // mysql, postgres, mssql, cockroachdb, hana
     |"time with time zone" // postgres, cockroachdb
     |"time without time zone" // postgres
-    |"timestamp" // mysql, postgres, mssql, oracle, cockroachdb
+    |"timestamp" // mysql, postgres, mssql, oracle, cockroachdb, hana
     |"timestamp without time zone" // postgres, cockroachdb
     |"timestamp with time zone" // postgres, oracle, cockroachdb
     |"timestamp with local time zone"; // oracle
@@ -52,19 +52,19 @@ export type WithPrecisionColumnType = "float" // mysql, mssql, oracle, sqlite
 export type WithLengthColumnType = "character varying" // postgres, cockroachdb
     |"varying character" // sqlite
     |"char varying" // cockroachdb
-    |"nvarchar" // mssql, mysql
+    |"nvarchar" // mssql, mysql, hana
     |"national varchar" // mysql
     |"character" // mysql, postgres, sqlite, cockroachdb
     |"native character" // sqlite
-    |"varchar" // mysql, postgres, mssql, sqlite, cockroachdb
-    |"char" // mysql, postgres, mssql, oracle, cockroachdb
-    |"nchar" // mssql, oracle, sqlite, mysql
+    |"varchar" // mysql, postgres, mssql, sqlite, cockroachdb, hana
+    |"char" // mysql, postgres, mssql, oracle, cockroachdb, hana
+    |"nchar" // mssql, oracle, sqlite, mysql, hana
     |"national char" // mysql
     |"varchar2" // oracle
     |"nvarchar2" // oracle, sqlite
     |"raw" // oracle
-    |"binary" // mssql
-    |"varbinary" // mssql
+    |"binary" // mssql, hana
+    |"varbinary" // mssql, hana
     |"string"; // cockroachdb
 
 export type WithWidthColumnType = "tinyint" // mysql
@@ -120,7 +120,7 @@ export type SimpleColumnType =
     |"raw" // oracle
     |"long raw" // oracle
     |"bfile" // oracle
-    |"clob" // oracle, sqlite
+    |"clob" // oracle, sqlite, hana
     |"nclob" // oracle
     |"image" // mssql
 
@@ -129,7 +129,7 @@ export type SimpleColumnType =
     |"timestamptz" // postgres, cockroachdb
     |"timestamp with local time zone" // oracle
     |"smalldatetime" // mssql
-    |"date" // mysql, postgres, mssql, oracle, sqlite
+    |"date" // mysql, postgres, mssql, oracle, sqlite, hana
     |"interval year to month" // oracle
     |"interval day to second" // oracle
     |"interval" // postgres, cockroachdb

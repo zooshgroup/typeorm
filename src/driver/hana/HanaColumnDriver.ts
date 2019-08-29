@@ -72,112 +72,60 @@ export class HanaColumnDriver implements Driver {
      * @see https://www.postgresql.org/docs/9.2/static/datatype.html
      */
     supportedDataTypes: ColumnType[] = [
-        "int",
-        "int2",
-        "int4",
-        "int8",
+        "tinyint",
         "smallint",
         "integer",
         "bigint",
-        "decimal",
-        "numeric",
+        "decimal", // DECIMAL(p,s)
         "real",
-        "float",
-        "float4",
-        "float8",
-        "double precision",
-        "money",
-        "character varying",
-        "varchar",
-        "character",
-        "char",
-        "text",
-        "citext",
-        "hstore",
-        "bytea",
-        "bit",
-        "varbit",
-        "bit varying",
-        "timetz",
-        "timestamptz",
-        "timestamp",
-        "timestamp without time zone",
-        "timestamp with time zone",
+//        "float", // FLOAT(n)
+        "double",
+        "char", // CHAR(n)
+        "nchar", // NCHAR(n)
+        "varchar", // VARCHAR(n)
+        "nvarchar", // NVARCHAR(n)
+        "binary", // BINARY(n)
+        "varbinary", // VARBINARY(n)
         "date",
-        "time",
-        "time without time zone",
-        "time with time zone",
-        "interval",
-        "bool",
-        "boolean",
-        "enum",
-        "point",
-        "line",
-        "lseg",
-        "box",
-        "path",
-        "polygon",
-        "circle",
-        "cidr",
-        "inet",
-        "macaddr",
-        "tsvector",
-        "tsquery",
-        "uuid",
-        "xml",
-        "json",
-        "jsonb",
-        "int4range",
-        "int8range",
-        "numrange",
-        "tsrange",
-        "tstzrange",
-        "daterange",
-        "geometry",
-        "geography",
-        "cube"
+        "time", // TIME(p)
+        "timestamp", // TIMESTAMP(p)
+        "clob"
     ];
 
     /**
      * Gets list of spatial column data types.
      */
     spatialTypes: ColumnType[] = [
-        "geometry",
-        "geography"
     ];
 
     /**
      * Gets list of column data types that support length by a driver.
      */
     withLengthColumnTypes: ColumnType[] = [
-        "character varying",
         "varchar",
-        "character",
+        "nvarchar",
         "char",
-        "bit",
+        "nchar",
+        "binary",
         "varbit",
-        "bit varying"
+        "varbinary"
     ];
 
     /**
      * Gets list of column data types that support precision by a driver.
      */
     withPrecisionColumnTypes: ColumnType[] = [
-        "numeric",
         "decimal",
-        "interval",
-        "time without time zone",
-        "time with time zone",
-        "timestamp without time zone",
-        "timestamp with time zone"
+        "time",
+        "timestamp"
     ];
 
     /**
      * Gets list of column data types that support scale by a driver.
      */
     withScaleColumnTypes: ColumnType[] = [
-        "numeric",
-        "decimal"
+        "decimal",
+        "timestamp"
     ];
 
     /**
@@ -186,26 +134,26 @@ export class HanaColumnDriver implements Driver {
      */
     mappedDataTypes: MappedColumnTypes = {
         createDate: "timestamp",
-        createDateDefault: "now()",
+        createDateDefault: "CURRENT_UTCTIMESTAMP",
         updateDate: "timestamp",
-        updateDateDefault: "now()",
-        version: "int4",
-        treeLevel: "int4",
-        migrationId: "int4",
-        migrationName: "varchar",
-        migrationTimestamp: "int8",
-        cacheId: "int4",
-        cacheIdentifier: "varchar",
-        cacheTime: "int8",
-        cacheDuration: "int4",
-        cacheQuery: "text",
-        cacheResult: "text",
-        metadataType: "varchar",
-        metadataDatabase: "varchar",
-        metadataSchema: "varchar",
-        metadataTable: "varchar",
-        metadataName: "varchar",
-        metadataValue: "text",
+        updateDateDefault: "CURRENT_UTCTIMESTAMP",
+        version: "integer",
+        treeLevel: "integer",
+        migrationId: "integer",
+        migrationName: "nvarchar",
+        migrationTimestamp: "integer",
+        cacheId: "integer",
+        cacheIdentifier: "nvarchar",
+        cacheTime: "integer",
+        cacheDuration: "integer",
+        cacheQuery: "clob",
+        cacheResult: "clob",
+        metadataType: "nvarchar",
+        metadataDatabase: "nvarchar",
+        metadataSchema: "nvarchar",
+        metadataTable: "nvarchar",
+        metadataName: "nvarchar",
+        metadataValue: "clob",
     };
 
     /**
@@ -213,13 +161,15 @@ export class HanaColumnDriver implements Driver {
      * Used in the cases when length/precision/scale is not specified by user.
      */
     dataTypeDefaults: DataTypeDefaults = {
-        "character": { length: 1 },
-        "bit": { length: 1 },
-        "interval": { precision: 6 },
-        "time without time zone": { precision: 6 },
-        "time with time zone": { precision: 6 },
-        "timestamp without time zone": { precision: 6 },
-        "timestamp with time zone": { precision: 6 },
+        "decimal": { precision: 10, scale: 0 },
+        "char": { length: 1 },
+        "nchar": { length: 1 },
+        "varchar": { length: 255 },
+        "nvarchar": { length: 255 },
+        "binary": { length: 2000 },
+        "varbinary": { length: 2000 },
+        "time": { precision: 0 },
+        "timestamp": { precision: 5 },
     };
 
     /**
@@ -482,56 +432,17 @@ export class HanaColumnDriver implements Driver {
      * Creates a database type from a given column metadata.
      */
     normalizeType(column: { type?: ColumnType, length?: number | string, precision?: number|null, scale?: number, isArray?: boolean }): string {
-        if (column.type === Number || column.type === "int" || column.type === "int4") {
+        if (column.type === Number) {
             return "integer";
 
         } else if (column.type === String || column.type === "varchar") {
-            return "character varying";
+            return "nvarchar";
 
-        } else if (column.type === Date || column.type === "timestamp") {
-            return "timestamp without time zone";
+        } else if (column.type === Date) {
+            return "timestamp";
 
-        } else if (column.type === "timestamptz") {
-            return "timestamp with time zone";
-
-        } else if (column.type === "time") {
-            return "time without time zone";
-
-        } else if (column.type === "timetz") {
-            return "time with time zone";
-
-        } else if (column.type === Boolean || column.type === "bool") {
+        } else if (column.type === Boolean) {
             return "boolean";
-
-        } else if (column.type === "simple-array") {
-            return "text";
-
-        } else if (column.type === "simple-json") {
-            return "text";
-
-        } else if (column.type === "simple-enum") {
-            return "enum";
-
-        } else if (column.type === "int2") {
-            return "smallint";
-
-        } else if (column.type === "int8") {
-            return "bigint";
-
-        } else if (column.type === "decimal") {
-            return "numeric";
-
-        } else if (column.type === "float8" || column.type === "float") {
-            return "double precision";
-
-        } else if (column.type === "float4") {
-            return "real";
-
-        } else if (column.type === "char") {
-            return "character";
-
-        } else if (column.type === "varbit") {
-            return "bit varying";
 
         } else {
             return column.type as string || "";
@@ -590,8 +501,24 @@ export class HanaColumnDriver implements Driver {
     /**
      * Returns default column lengths, which is required on column creation.
      */
-    getColumnLength(column: ColumnMetadata): string {
-        return column.length ? column.length.toString() : "";
+    getColumnLength(column: ColumnMetadata|TableColumn): string {
+        if (column.length)
+            return column.length.toString();
+
+        switch (column.type) {
+            case "char":
+            case "nchar":
+                return "1";
+            case String:
+            case "varchar":
+            case "nvarchar":
+                return "255";
+            case "binary":
+            case "varbinary":
+                return "2000";
+            default:
+                return "";
+        }
     }
 
     /**
@@ -600,7 +527,6 @@ export class HanaColumnDriver implements Driver {
     createFullType(column: TableColumn): string {
         let type = column.type;
 
- /* TODO ---------
         // used 'getColumnLength()' method, because in Oracle column length is required for some data types.
         if (this.getColumnLength(column)) {
             type += `(${this.getColumnLength(column)})`;
@@ -611,17 +537,6 @@ export class HanaColumnDriver implements Driver {
         } else if (column.precision !== null && column.precision !== undefined) {
             type += "(" + column.precision + ")";
         }
-
-        if (column.type === "timestamp with time zone") {
-            type = "TIMESTAMP" + (column.precision !== null && column.precision !== undefined ? "(" + column.precision + ")" : "") + " WITH TIME ZONE";
-
-        } else if (column.type === "timestamp with local time zone") {
-            type = "TIMESTAMP" + (column.precision !== null && column.precision !== undefined ? "(" + column.precision + ")" : "") + " WITH LOCAL TIME ZONE";
-        }
-
-        if (column.isArray)
-            type += " array"; */
-
         return type;
     }
 

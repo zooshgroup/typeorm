@@ -119,8 +119,8 @@
   "scripts": {
     "test-ci": "gulp ci-tests",
     "test": "rimraf ./build && tsc && mocha --file ./build/compiled/test/utils/test-setup.js --bail --recursive --timeout 60000 ./build/compiled/test",
-    "build-watch": "tsc -w",
     "test-fast": "mocha --file ./build/compiled/test/utils/test-setup.js --bail --recursive --timeout 60000 ./build/compiled/test",
+    "build-watch": "tsc -w",
     "test-watch": "nodemon -w ./build -x \"mocha --file ./build/compiled/test/utils/test-setup.js --bail --recursive --timeout 60000 ./build/compiled/test\"",
     "compile": "rimraf ./build && tsc",
     "package": "gulp package",
