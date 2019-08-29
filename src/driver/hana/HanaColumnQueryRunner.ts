@@ -19,6 +19,7 @@ import { TableExclusion } from "../../schema-builder/table/TableExclusion";
 import { Broadcaster } from "../../subscriber/Broadcaster";
 import { OperationNotSupportedError } from '../../error/OperationNotSupportedError';
 import { ObjectLiteral } from '../../common/ObjectLiteral';
+import { ColumnType } from '../types/ColumnTypes';
 
 /**
  * Runs queries on a single mysql database connection.
@@ -184,7 +185,13 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      * Checks if table with the given name exist in the database.
      */
     async hasTable(tableOrName: Table | string): Promise<boolean> {
-        throw new OperationNotSupportedError();
+        const currentSchemaQuery = await this.query(`SELECT CURRENT_SCHEMA FROM DUMMY`);
+        const currentSchema = currentSchemaQuery[0]["CURRENT_SCHEMA"];
+
+        const tableName = tableOrName instanceof Table ? tableOrName.name : `\"${tableOrName}\"`;
+        const sql = `SELECT "TABLE_NAME" FROM "TABLES" WHERE "TABLE_NAME" = '${tableName}' AND SCHEMA_NAME = '${currentSchema}'`;
+        const result = await this.query(sql);
+        return result.length ? true : false;
     }
 
     /**
@@ -235,6 +242,9 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
 
         upQueries.push(this.createTableSql(table, createForeignKeys));
         downQueries.push(this.dropTableSql(table));
+
+        upQueries.push(this.createPrimaryKeySql(table, table.primaryColumns.map(column => column.name)));
+        downQueries.push(this.dropPrimaryKeySql(table));
 
 /*   TODO --------------
       // if createForeignKeys is true, we must drop created foreign keys in down query.
@@ -336,7 +346,20 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      * Creates a new primary key.
      */
     async createPrimaryKey(tableOrName: Table | string, columnNames: string[]): Promise<void> {
-        throw new OperationNotSupportedError();
+        const table = tableOrName instanceof Table ? tableOrName : await this.getCachedTable(tableOrName);
+        const clonedTable = table.clone();
+
+        const up = this.createPrimaryKeySql(table, columnNames);
+
+        // mark columns as primary, because dropPrimaryKeySql build constraint name from table primary column names.
+        clonedTable.columns.forEach(column => {
+            if (columnNames.find(columnName => columnName === column.name))
+                column.isPrimary = true;
+        });
+        const down = this.dropPrimaryKeySql(clonedTable);
+
+        await this.executeQueries(up, down);
+        this.replaceCachedTable(table, clonedTable);
     }
 
     /**
@@ -548,19 +571,81 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      * Loads all tables (with given names) from the database and creates a Table from them.
      */
     protected async loadTables(tableNames: string[]): Promise<Table[]> {
-        const tableColumnID = new TableColumn();
-        tableColumnID.name = "ID";
-        tableColumnID.type = "integer";
 
-        const tableColumnString = new TableColumn();
-        tableColumnString.name = "TEST";
-        tableColumnString.type = "varchar";
+        // if no tables given then no need to proceed
+        if (!tableNames || !tableNames.length)
+            return [];
 
-        const table = new Table();
-        table.name = "TEST";
-        table.columns = [tableColumnID, tableColumnString];
+        const currentSchemaQuery = await this.query(`SELECT CURRENT_SCHEMA FROM DUMMY`);
+        const currentSchema = currentSchemaQuery[0]["CURRENT_SCHEMA"];
 
-        return Promise.all([table]);
+        // load tables, columns, indices and foreign keys
+        const tableNamesString = tableNames.map(name => "'" + (name.startsWith(currentSchema + ".") ? name.substring(currentSchema.length + 1) : name)  + "'").join(", ");
+        const tablesSql = `SELECT * FROM "TABLES" WHERE "TABLE_NAME" IN (${tableNamesString}) AND SCHEMA_NAME = '${currentSchema}'`;
+        const columnsSql = `SELECT * FROM "TABLE_COLUMNS" WHERE "TABLE_NAME" IN (${tableNamesString}) AND SCHEMA_NAME = '${currentSchema}'`;
+        const constraintsSql = `SELECT * FROM "CONSTRAINTS" WHERE "TABLE_NAME" IN (${tableNamesString}) AND SCHEMA_NAME = '${currentSchema}'`;
+
+        const [dbTables, dbColumns, dbConstraints]: ObjectLiteral[][] = await Promise.all([
+            this.query(tablesSql),
+            this.query(columnsSql),
+            this.query(constraintsSql)
+        ]);
+
+        // if tables were not found in the db, no need to proceed
+        if (!dbTables.length)
+            return [];
+
+        // create tables for loaded tables
+        return dbTables.map(dbTable => {
+            const table = new Table();
+            table.name = this.driver.buildTableName(dbTable["TABLE_NAME"], currentSchema);
+
+            // create columns from the loaded columns
+            table.columns = dbColumns
+                .filter(dbColumn => dbColumn["TABLE_NAME"] === table.name)
+                .map(dbColumn => {
+                    const columnConstraints = dbConstraints.filter(dbConstraint => dbConstraint["TABLE_NAME"] === table.name && dbConstraint["COLUMN_NAME"] === dbColumn["COLUMN_NAME"]);
+
+                    const tableColumn = new TableColumn();
+                    tableColumn.name = dbColumn["COLUMN_NAME"];
+                    tableColumn.type = dbColumn["DATA_TYPE_NAME"].toLowerCase();
+                    if (tableColumn.type.indexOf("(") !== -1)
+                        tableColumn.type = tableColumn.type.replace(/\([0-9]*\)/, "");
+
+                    // TODO check only columns that have length property
+                    if (this.driver.withLengthColumnTypes.indexOf(tableColumn.type as ColumnType) !== -1) {
+                        const length = dbColumn["LENGTH"];
+                        tableColumn.length = length && !this.isDefaultColumnLength(table, tableColumn, length) ? length.toString() : "";
+                    }
+                    /* 
+                                        if (tableColumn.type === "number" || tableColumn.type === "float") {
+                                            if (dbColumn["DATA_PRECISION"] !== null && !this.isDefaultColumnPrecision(table, tableColumn, dbColumn["DATA_PRECISION"]))
+                                                tableColumn.precision = dbColumn["DATA_PRECISION"];
+                                            if (dbColumn["DATA_SCALE"] !== null && !this.isDefaultColumnScale(table, tableColumn, dbColumn["DATA_SCALE"]))
+                                                tableColumn.scale = dbColumn["DATA_SCALE"];
+                    
+                                        } else if ((tableColumn.type === "timestamp"
+                                            || tableColumn.type === "timestamp with time zone"
+                                            || tableColumn.type === "timestamp with local time zone") && dbColumn["DATA_SCALE"] !== null) {
+                                            tableColumn.precision = !this.isDefaultColumnPrecision(table, tableColumn, dbColumn["DATA_SCALE"]) ? dbColumn["DATA_SCALE"] : undefined;
+                                        } */
+
+                    // TODO
+                    tableColumn.default = dbColumn["DEFAULT_VALUE"] !== null
+                        && dbColumn["DEFAULT_VALUE"] !== undefined
+                        && dbColumn["DEFAULT_VALUE"].trim() !== "NULL" ? tableColumn.default = dbColumn["DEFAULT_VALUE"].trim() : undefined;
+
+                    tableColumn.isNullable = dbColumn["IS_NULLABLE"] === "TRUE";
+                    tableColumn.isUnique = columnConstraints.length > 0 && columnConstraints[0]["IS_UNIQUE_KEY"] === "TRUE";
+                    tableColumn.isPrimary = columnConstraints.length > 0 && columnConstraints[0]["IS_PRIMARY_KEY"] === "TRUE";
+                    tableColumn.isGenerated = dbColumn["GENERATED_ALWAYS_AS"] !== null;
+                    tableColumn.comment = ""; // todo
+                    return tableColumn;
+                });
+
+                console.log("loadTables - table:", table);
+            return table;
+        });
     }
 
     /**
@@ -640,14 +725,18 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      * Builds create primary key sql.
      */
     protected createPrimaryKeySql(table: Table, columnNames: string[]): Query {
-        throw new OperationNotSupportedError();
+        const primaryKeyName = this.connection.namingStrategy.primaryKeyName(table.name, columnNames);
+        const columnNamesString = columnNames.map(columnName => `"${columnName}"`).join(", ");
+        return new Query(`ALTER TABLE ${table.name} ADD CONSTRAINT "${primaryKeyName}" PRIMARY KEY (${columnNamesString})`);
     }
 
     /**
      * Builds drop primary key sql.
      */
     protected dropPrimaryKeySql(table: Table): Query {
-        throw new OperationNotSupportedError();
+        const columnNames = table.primaryColumns.map(column => column.name);
+        const primaryKeyName = this.connection.namingStrategy.primaryKeyName(table.name, columnNames);
+        return new Query(`ALTER TABLE ${table.name} DROP CONSTRAINT "${primaryKeyName}"`);
     }
 
     /**

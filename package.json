@@ -78,6 +78,7 @@
     "mssql": "^4.3.2",
     "mysql": "^2.15.0",
     "mysql2": "^1.6.5",
+    "nodemon": "1.19.1",
     "pg": "^7.8.1",
     "redis": "^2.8.0",
     "remap-istanbul": "^0.13.0",
@@ -89,10 +90,11 @@
     "sqlite3": "^4.0.9",
     "ts-node": "^8.0.2",
     "tslint": "^5.13.1",
-    "typescript": "^3.3.3333",
-    "typeorm-aurora-data-api-driver": "^1.1.1"
+    "typeorm-aurora-data-api-driver": "^1.1.1",
+    "typescript": "^3.3.3333"
   },
   "dependencies": {
+    "@sap/hana-client": "^2.4.144",
     "app-root-path": "^2.0.1",
     "buffer": "^5.1.0",
     "chalk": "^2.4.2",
@@ -117,7 +119,9 @@
   "scripts": {
     "test-ci": "gulp ci-tests",
     "test": "rimraf ./build && tsc && mocha --file ./build/compiled/test/utils/test-setup.js --bail --recursive --timeout 60000 ./build/compiled/test",
+    "build-watch": "tsc -w",
     "test-fast": "mocha --file ./build/compiled/test/utils/test-setup.js --bail --recursive --timeout 60000 ./build/compiled/test",
+    "test-watch": "nodemon -w ./build -x \"mocha --file ./build/compiled/test/utils/test-setup.js --bail --recursive --timeout 60000 ./build/compiled/test\"",
     "compile": "rimraf ./build && tsc",
     "package": "gulp package",
     "lint": "tslint -p .",
