@@ -57,13 +57,13 @@ export type WithLengthColumnType = "character varying" // postgres, cockroachdb
     |"character" // mysql, postgres, sqlite, cockroachdb
     |"native character" // sqlite
     |"varchar" // mysql, postgres, mssql, sqlite, cockroachdb, hana
-    |"char" // mysql, postgres, mssql, oracle, cockroachdb, hana
-    |"nchar" // mssql, oracle, sqlite, mysql, hana
+    |"char" // mysql, postgres, mssql, oracle, cockroachdb
+    |"nchar" // mssql, oracle, sqlite, mysql
     |"national char" // mysql
     |"varchar2" // oracle
     |"nvarchar2" // oracle, sqlite
     |"raw" // oracle
-    |"binary" // mssql, hana
+    |"binary" // mssql
     |"varbinary" // mssql, hana
     |"string"; // cockroachdb
 
@@ -107,8 +107,8 @@ export type SimpleColumnType =
     |"tinytext" // mysql
     |"mediumblob" // mysql
     |"mediumtext" // mysql
-    |"blob" // mysql, oracle, sqlite, cockroachdb
-    |"text" // mysql, postgres, mssql, sqlite, cockroachdb
+    |"blob" // mysql, oracle, sqlite, cockroachdb, hana
+    |"text" // mysql, postgres, mssql, sqlite, cockroachdb, hana
     |"ntext" // mssql
     |"citext" // postgres
     |"hstore" // postgres
@@ -121,7 +121,7 @@ export type SimpleColumnType =
     |"long raw" // oracle
     |"bfile" // oracle
     |"clob" // oracle, sqlite, hana
-    |"nclob" // oracle
+    |"nclob" // oracle, hana
     |"image" // mssql
 
     // date types

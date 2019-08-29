@@ -78,18 +78,17 @@ export class HanaColumnDriver implements Driver {
         "bigint",
         "decimal", // DECIMAL(p,s)
         "real",
-//        "float", // FLOAT(n)
         "double",
-        "char", // CHAR(n)
-        "nchar", // NCHAR(n)
         "varchar", // VARCHAR(n)
         "nvarchar", // NVARCHAR(n)
-        "binary", // BINARY(n)
         "varbinary", // VARBINARY(n)
         "date",
         "time", // TIME(p)
         "timestamp", // TIMESTAMP(p)
-        "clob"
+        "blob",
+        "clob",
+        "nclob",
+        "text"
     ];
 
     /**
@@ -104,10 +103,6 @@ export class HanaColumnDriver implements Driver {
     withLengthColumnTypes: ColumnType[] = [
         "varchar",
         "nvarchar",
-        "char",
-        "nchar",
-        "binary",
-        "varbit",
         "varbinary"
     ];
 
@@ -162,11 +157,8 @@ export class HanaColumnDriver implements Driver {
      */
     dataTypeDefaults: DataTypeDefaults = {
         "decimal": { precision: 10, scale: 0 },
-        "char": { length: 1 },
-        "nchar": { length: 1 },
         "varchar": { length: 255 },
         "nvarchar": { length: 255 },
-        "binary": { length: 2000 },
         "varbinary": { length: 2000 },
         "time": { precision: 0 },
         "timestamp": { precision: 5 },
@@ -313,6 +305,7 @@ export class HanaColumnDriver implements Driver {
      * Prepares given value to a value to be persisted, based on its column type or metadata.
      */
     prepareHydratedValue(value: any, columnMetadata: ColumnMetadata): any {
+        console.log("prepareHydratedValue");
         if (value === null || value === undefined)
             return columnMetadata.transformer ? ApplyValueTransformers.transformFrom(columnMetadata.transformer, value) : value;
 
@@ -506,14 +499,10 @@ export class HanaColumnDriver implements Driver {
             return column.length.toString();
 
         switch (column.type) {
-            case "char":
-            case "nchar":
-                return "1";
             case String:
             case "varchar":
             case "nvarchar":
                 return "255";
-            case "binary":
             case "varbinary":
                 return "2000";
             default:
@@ -564,11 +553,13 @@ export class HanaColumnDriver implements Driver {
      * todo: slow. optimize Object.keys(), OrmUtils.mergeDeep and column.createValueMap parts
      */
     createGeneratedMap(metadata: EntityMetadata, insertResult: ObjectLiteral) {
+
         if (!insertResult)
             return undefined;
 
         return Object.keys(insertResult).reduce((map, key) => {
             const column = metadata.findColumnWithDatabaseName(key);
+            console.log("createGeneratedMap - column", column);
             if (column) {
                 OrmUtils.mergeDeep(map, column.createValueMap(insertResult[key]));
                 // OrmUtils.mergeDeep(map, column.createValueMap(this.prepareHydratedValue(insertResult[key], column))); // TODO: probably should be like there, but fails on enums, fix later
