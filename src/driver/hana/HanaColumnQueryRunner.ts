@@ -643,7 +643,6 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
                     tableColumn.comment = ""; // todo
                     if (tableColumn.isGenerated) { // todo generationStrategy === "increment"
                         tableColumn.sequenceName = "_SYS_SEQUENCE_" + dbColumn["COLUMN_ID"] + "_#0_#";
-                        console.log(tableColumn.sequenceName)
                     }
                     return tableColumn;
                 });
