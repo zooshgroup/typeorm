@@ -427,7 +427,7 @@ export class HanaColumnDriver implements Driver {
         if (column.type === Number) {
             return "integer";
 
-        } else if (column.type === String || column.type === "varchar") {
+        } else if (column.type === String || column.type === "varchar" || column.type === "uuid") {
             return "nvarchar";
 
         } else if (column.type === Date) {
@@ -496,6 +496,9 @@ export class HanaColumnDriver implements Driver {
     getColumnLength(column: ColumnMetadata|TableColumn): string {
         if (column.length)
             return column.length.toString();
+
+        if (column.generationStrategy === "uuid")
+            return "36";
 
         switch (column.type) {
             case String:
