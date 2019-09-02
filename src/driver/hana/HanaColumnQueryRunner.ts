@@ -603,7 +603,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
 
             // create columns from the loaded columns
             table.columns = dbColumns
-                .filter(dbColumn => dbColumn["TABLE_NAME"] === table.name)
+                .filter(dbColumn => dbColumn["TABLE_NAME"] === table.name || dbColumn["TABLE_NAME"] === dbTable["TABLE_NAME"])
                 .map(dbColumn => {
                     const columnConstraints = dbConstraints.filter(dbConstraint => dbConstraint["TABLE_NAME"] === table.name && dbConstraint["COLUMN_NAME"] === dbColumn["COLUMN_NAME"]);
 
@@ -641,10 +641,13 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
                     tableColumn.isPrimary = columnConstraints.length > 0 && columnConstraints[0]["IS_PRIMARY_KEY"] === "TRUE";
                     tableColumn.isGenerated = dbColumn["GENERATED_ALWAYS_AS"] !== null;
                     tableColumn.comment = ""; // todo
+                    if (tableColumn.isGenerated) { // todo generationStrategy === "increment"
+                        tableColumn.sequenceName = "_SYS_SEQUENCE_" + dbColumn["COLUMN_ID"] + "_#0_#";
+                        console.log(tableColumn.sequenceName)
+                    }
                     return tableColumn;
                 });
 
-                console.log("loadTables - table:", table);
             return table;
         });
     }

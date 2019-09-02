@@ -305,7 +305,6 @@ export class HanaColumnDriver implements Driver {
      * Prepares given value to a value to be persisted, based on its column type or metadata.
      */
     prepareHydratedValue(value: any, columnMetadata: ColumnMetadata): any {
-        console.log("prepareHydratedValue");
         if (value === null || value === undefined)
             return columnMetadata.transformer ? ApplyValueTransformers.transformFrom(columnMetadata.transformer, value) : value;
 
@@ -547,25 +546,28 @@ export class HanaColumnDriver implements Driver {
         return Promise.resolve();
     }
 
-    /**
+   /**
      * Creates generated map of values generated or returned by database after INSERT query.
-     *
-     * todo: slow. optimize Object.keys(), OrmUtils.mergeDeep and column.createValueMap parts
      */
-    createGeneratedMap(metadata: EntityMetadata, insertResult: ObjectLiteral) {
-
-        if (!insertResult)
-            return undefined;
-
-        return Object.keys(insertResult).reduce((map, key) => {
-            const column = metadata.findColumnWithDatabaseName(key);
-            console.log("createGeneratedMap - column", column);
-            if (column) {
-                OrmUtils.mergeDeep(map, column.createValueMap(insertResult[key]));
-                // OrmUtils.mergeDeep(map, column.createValueMap(this.prepareHydratedValue(insertResult[key], column))); // TODO: probably should be like there, but fails on enums, fix later
+    createGeneratedMap(metadata: EntityMetadata, insertResult: any) {
+        const generatedMap = metadata.generatedColumns.reduce((map, generatedColumn) => {
+            // seems to be the only way to get the inserted id, see https://github.com/kripken/sql.js/issues/77
+            if (generatedColumn.isPrimary && generatedColumn.generationStrategy === "increment") {
+                const query = "SELECT \"" + generatedColumn.sequenceName + "\".CURRVAL as \"id\" FROM DUMMY";
+                try {
+                    let result = this.databaseConnection.exec(query);
+                    this.connection.logger.logQuery(query);
+                    return OrmUtils.mergeDeep(map, generatedColumn.createValueMap(result[0].id));
+                }
+                catch (e) {
+                    this.connection.logger.logQueryError(e, query, []);
+                }
             }
+
             return map;
         }, {} as ObjectLiteral);
+
+        return Object.keys(generatedMap).length > 0 ? generatedMap : undefined;
     }
 
     /**
@@ -597,14 +599,14 @@ export class HanaColumnDriver implements Driver {
      * Returns true if driver supports RETURNING / OUTPUT statement.
      */
     isReturningSqlSupported(): boolean {
-        return true;
+        return false;
     }
 
     /**
      * Returns true if driver supports uuid values generation on its own.
      */
     isUUIDGenerationSupported(): boolean {
-        return true;
+        return false;
     }
 
     get uuidGenerator(): string {

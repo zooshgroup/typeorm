@@ -377,6 +377,15 @@ export class RdbmsSchemaBuilder implements SchemaBuilder {
             // create a new table and sync it in the database
             const table = Table.create(metadata, this.connection.driver);
             await this.queryRunner.createTable(table, false, false);
+            if (metadata.connection.driver instanceof HanaColumnDriver) {
+                const tableMetaData = await this.queryRunner.getTable(metadata.tablePath);
+                if (tableMetaData) {
+                    metadata.generatedColumns.forEach(columnMetadata => {
+                        tableMetaData.columns.filter(newMetadataColumn => newMetadataColumn.name === columnMetadata.propertyName).forEach(newMetadataColumn => columnMetadata.sequenceName = newMetadataColumn.sequenceName)
+                    })
+                }
+            }
+
             this.queryRunner.loadedTables.push(table);
         });
     }

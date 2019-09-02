@@ -112,6 +112,11 @@ export class ColumnMetadata {
     generationStrategy?: "uuid"|"increment"|"rowid";
 
     /**
+     * Specifies sequence name for generation strategy increment.
+     */
+    sequenceName?: string;
+
+    /**
      * Column comment.
      * This feature is not supported by all databases.
      */

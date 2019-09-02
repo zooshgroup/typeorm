@@ -46,6 +46,11 @@ export class TableColumn {
     generationStrategy?: "uuid"|"increment"|"rowid";
 
     /**
+     * Specifies sequence name for generation strategy increment.
+     */
+    sequenceName?: string;
+
+    /**
      * Indicates if column is a primary key.
      */
     isPrimary: boolean = false;
@@ -190,6 +195,7 @@ export class TableColumn {
             enum: this.enum,
             asExpression: this.asExpression,
             generatedType: this.generatedType,
+            sequenceName: this.sequenceName,
             default: this.default,
             onUpdate: this.onUpdate,
             isNullable: this.isNullable,
