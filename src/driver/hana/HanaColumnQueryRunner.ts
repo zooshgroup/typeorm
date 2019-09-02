@@ -79,6 +79,10 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
         if (this.isTransactionActive)
             throw new TransactionAlreadyStartedError();
 
+        if (isolationLevel !== "READ COMMITTED" && isolationLevel !== "REPEATABLE READ" && isolationLevel !== "SERIALIZABLE") {
+            throw new OperationNotSupportedError(`HANA only supports SERIALIZABLE, READ COMMITTED and REPEATABLE READ isolation`);
+        }
+
         this.isTransactionActive = true;
         if (isolationLevel) {
             // TODO UNCOMMITTED 

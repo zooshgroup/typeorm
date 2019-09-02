@@ -4,10 +4,9 @@
 export class OperationNotSupportedError extends Error {
     name = "OperationNotSupportedError";
 
-    constructor() {
+    constructor(message = `The operation is not supported by the driver.`) {
         super();
         Object.setPrototypeOf(this, OperationNotSupportedError.prototype);
-        this.message = `The operation is not supported by the driver.`;
+        this.message = message;        
     }
-
 }
