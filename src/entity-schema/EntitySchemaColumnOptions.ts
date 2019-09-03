@@ -99,7 +99,7 @@ export interface EntitySchemaColumnOptions extends SpatialColumnOptions {
     /**
      * Specifies if this column will use AUTO_INCREMENT or not (e.g. generated number).
      */
-    generated?: true|"increment"|"uuid"|"rowid";
+    generated?: true|"increment"|"uuid"|"rowid"|"sequence";
 
     /**
      * Specifies if column's value must be unique or not.
@@ -194,5 +194,10 @@ export interface EntitySchemaColumnOptions extends SpatialColumnOptions {
      * this column when reading or writing to the database.
      */
     transformer?: ValueTransformer|ValueTransformer[];
+
+    /**
+     * Specifies sequence name for generation strategy increment.
+     */
+    sequenceName?: string;
 
 }

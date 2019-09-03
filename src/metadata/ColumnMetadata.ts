@@ -109,7 +109,7 @@ export class ColumnMetadata {
     /**
      * Specifies generation strategy if this column will use auto increment.
      */
-    generationStrategy?: "uuid"|"increment"|"rowid";
+    generationStrategy?: "uuid"|"increment"|"rowid"|"sequence";
 
     /**
      * Specifies sequence name for generation strategy increment.
@@ -361,6 +361,9 @@ export class ColumnMetadata {
         if (options.args.options.zerofill) {
             this.zerofill = options.args.options.zerofill;
             this.unsigned = true; // if you specify ZEROFILL for a numeric column, MySQL automatically adds the UNSIGNED attribute to the column
+        }
+        if (options.args.options.sequenceName) {
+            this.sequenceName = options.args.options.sequenceName;
         }
         if (options.args.options.unsigned)
             this.unsigned = options.args.options.unsigned;

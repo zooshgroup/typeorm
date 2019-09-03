@@ -1,6 +1,8 @@
 import {ColumnOptions, getMetadataArgsStorage} from "../../";
 import {PrimaryGeneratedColumnNumericOptions} from "../options/PrimaryGeneratedColumnNumericOptions";
 import {PrimaryGeneratedColumnUUIDOptions} from "../options/PrimaryGeneratedColumnUUIDOptions";
+import {PrimaryGeneratedColumnSequenceOptions} from "../options/PrimaryGeneratedColumnSequenceOptions";
+
 import {GeneratedMetadataArgs} from "../../metadata-args/GeneratedMetadataArgs";
 
 /**
@@ -30,18 +32,22 @@ export function PrimaryGeneratedColumn(strategy: "rowid", options?: PrimaryGener
 
 /**
  * Column decorator is used to mark a specific class property as a table column.
+ */
+export function PrimaryGeneratedColumn(strategy: "sequence", options: PrimaryGeneratedColumnSequenceOptions): Function;
+
+/**
+ * Column decorator is used to mark a specific class property as a table column.
  * Only properties decorated with this decorator will be persisted to the database when entity be saved.
  * This column creates an integer PRIMARY COLUMN with generated set to true.
  */
-export function PrimaryGeneratedColumn(strategyOrOptions?: "increment"|"uuid"|"rowid"|PrimaryGeneratedColumnNumericOptions|PrimaryGeneratedColumnUUIDOptions,
-                                       maybeOptions?: PrimaryGeneratedColumnNumericOptions|PrimaryGeneratedColumnUUIDOptions): Function {
-
+export function PrimaryGeneratedColumn(strategyOrOptions?: "increment"|"uuid"|"rowid"|"sequence"|PrimaryGeneratedColumnNumericOptions|PrimaryGeneratedColumnUUIDOptions,
+                                       maybeOptions?: PrimaryGeneratedColumnNumericOptions|PrimaryGeneratedColumnUUIDOptions|PrimaryGeneratedColumnSequenceOptions): Function {
     // normalize parameters
     const options: ColumnOptions = {};
-    let strategy: "increment"|"uuid"|"rowid";
+    let strategy: "increment"|"uuid"|"rowid"|"sequence";
     if (strategyOrOptions) {
         if (typeof strategyOrOptions === "string")
-            strategy = strategyOrOptions as "increment"|"uuid"|"rowid";
+            strategy = strategyOrOptions as "increment"|"uuid"|"rowid"|"sequence";
 
         if (strategyOrOptions instanceof Object) {
             strategy = "increment";
@@ -63,8 +69,11 @@ export function PrimaryGeneratedColumn(strategyOrOptions?: "increment"|"uuid"|"r
                 options.type = "uuid";
             } else if (strategy === "rowid") {
                 options.type = "int";
+            }  else if (strategy === "sequence") {
+                options.type = "bigint";
             }
         }
+    
 
         // explicitly set a primary and generated to column options
         options.primary = true;

@@ -17,12 +17,15 @@ import {SqljsDriver} from "../driver/sqljs/SqljsDriver";
 import {BroadcasterResult} from "../subscriber/BroadcasterResult";
 import {EntitySchema} from "../";
 import {OracleDriver} from "../driver/oracle/OracleDriver";
+import {SequenceIdGenerator, SequenceParameter} from "./SequenceIdGenerator";
 import { HanaColumnDriver } from '../driver/hana/HanaColumnDriver';
 
 /**
  * Allows to build complex sql queries in a fashion way and execute those queries.
  */
 export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
+
+    static idGenerator: SequenceIdGenerator = new SequenceIdGenerator();
 
     // -------------------------------------------------------------------------
     // Public Implemented Methods
@@ -81,6 +84,14 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
             // console.timeEnd(".getting query and parameters");
             const insertResult = new InsertResult();
             // console.time(".query execution by database");
+            
+            for(let [index, parameter] of parameters.entries()) {
+                if (parameter instanceof SequenceParameter) {
+                    const id = await InsertQueryBuilder.idGenerator.getId(this.obtainQueryRunner(), parameter.sequenceName);
+                    parameters[index] = id;
+                }
+            };
+
             insertResult.raw = await queryRunner.query(sql, parameters);
             // console.timeEnd(".query execution by database");
 
@@ -448,6 +459,13 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
                         const paramName = "uuid_" + column.databaseName + valueSetIndex;
                         value = RandomGenerator.uuid4();
                         this.expressionMap.nativeParameters[paramName] = value;
+                        expression += this.connection.driver.createParameter(paramName, parametersCount);
+                        parametersCount++;
+
+                    // if value for this column was not provided then insert default value
+                    } else if (column.sequenceName && column.isGenerated && column.generationStrategy === "sequence" && value === undefined) {
+                        const paramName = "sequence_" + column.databaseName + valueSetIndex;
+                        this.expressionMap.nativeParameters[paramName] = new SequenceParameter(column.sequenceName);
                         expression += this.connection.driver.createParameter(paramName, parametersCount);
                         parametersCount++;
 

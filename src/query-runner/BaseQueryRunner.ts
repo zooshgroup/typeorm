@@ -6,6 +6,7 @@ import {View} from "../schema-builder/view/View";
 import {PromiseUtils} from "../util/PromiseUtils";
 import {Connection} from "../connection/Connection";
 import {Table} from "../schema-builder/table/Table";
+import {Sequence} from "../schema-builder/sequence/Sequence";
 import {EntityManager} from "../entity-manager/EntityManager";
 import {TableColumn} from "../schema-builder/table/TableColumn";
 import {Broadcaster} from "../subscriber/Broadcaster";
@@ -52,6 +53,11 @@ export abstract class BaseQueryRunner {
      * All synchronized views in the database.
      */
     loadedViews: View[] = [];
+
+    /**
+     * All synchronized sequences in the database.
+     */
+    loadedSequences: Sequence[] = [];
 
     /**
      * Broadcaster used on this query runner to broadcast entity events.
@@ -101,9 +107,27 @@ export abstract class BaseQueryRunner {
 
     protected abstract async loadViews(tablePaths: string[]): Promise<View[]>;
 
+    protected async loadSequences(sequencePathes: string[]): Promise<Sequence[]> {
+        return [];
+    }
+
     // -------------------------------------------------------------------------
     // Public Methods
     // -------------------------------------------------------------------------
+
+    /**
+     * Creates a new sequence.
+     */
+    async createSequence(sequence: Sequence): Promise<void> {
+        throw new Error(`Schema update queries are not supported by driver.`);
+    }
+
+    /**
+     * Drops the sequence.
+     */
+    async dropSequence(target: Sequence|string): Promise<void> {
+        throw new Error(`Schema update queries are not supported by driver.`);
+    }
 
     /**
      * Loads given table's data from the database.
@@ -135,6 +159,22 @@ export abstract class BaseQueryRunner {
     async getViews(viewPaths: string[]): Promise<View[]> {
         this.loadedViews = await this.loadViews(viewPaths);
         return this.loadedViews;
+    }
+
+    /**
+     * Loads given sequence's data from the database.
+     */
+    async getSequence(sequencePath: string): Promise<Sequence|undefined> {
+        this.loadedSequences = await this.loadSequences([sequencePath]);
+        return this.loadedSequences.length > 0 ? this.loadedSequences[0] : undefined;
+    }
+
+    /**
+     * Loads given view's data from the database.
+     */
+    async getSequences(sequencePathes: string[]): Promise<Sequence[]> {
+        this.loadedSequences = await this.loadSequences(sequencePathes);
+        return this.loadedSequences;
     }
 
     /**

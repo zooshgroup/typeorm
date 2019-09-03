@@ -26,4 +26,9 @@ export interface ColumnNumericOptions {
      */
     unsigned?: boolean;
 
+    /**
+     * Specifies sequence name for generation strategy increment.
+     */
+    sequenceName?: string;
+
 }

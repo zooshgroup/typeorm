@@ -9,6 +9,7 @@ import {ObjectLiteral} from "../common/ObjectLiteral";
 import {SqlInMemory} from "../driver/SqlInMemory";
 import {TableUnique} from "../schema-builder/table/TableUnique";
 import {View} from "../schema-builder/view/View";
+import {Sequence} from "../schema-builder/sequence/Sequence";
 import {Broadcaster} from "../subscriber/Broadcaster";
 import {TableCheck} from "../schema-builder/table/TableCheck";
 import {IsolationLevel} from "../driver/types/IsolationLevel";
@@ -60,6 +61,11 @@ export interface QueryRunner {
      * All synchronized views in the database.
      */
     loadedViews: View[];
+
+    /**
+     * All synchronized sequences in the database.
+     */
+    loadedSequences: Sequence[];
 
     /**
      * Creates/uses database connection from the connection pool to perform further operations.
@@ -141,6 +147,16 @@ export interface QueryRunner {
      */
     getViews(viewPaths: string[]): Promise<View[]>;
 
+        /**
+     * Loads a view by a given name from the database.
+     */
+    getSequence(sequencePath: string): Promise<Sequence|undefined>;
+
+    /**
+     * Loads all views from the database and returns them.
+     */
+    getSequences(sequencePathes: string[]): Promise<Sequence[]>;
+
     /**
      * Checks if a database with the given name exist.
      */
@@ -202,6 +218,16 @@ export interface QueryRunner {
      * Drops a view.
      */
     dropView(view: View|string): Promise<void>;
+
+        /**
+     * Creates a new sequence.
+     */
+    createSequence(sequence: Sequence): Promise<void>;
+
+    /**
+     * Drops a sequence.
+     */
+    dropSequence(sequence: Sequence|string): Promise<void>;
 
     /**
      * Renames a table.
