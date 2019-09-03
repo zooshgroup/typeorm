@@ -20,6 +20,7 @@ import { Broadcaster } from "../../subscriber/Broadcaster";
 import { OperationNotSupportedError } from '../../error/OperationNotSupportedError';
 import { ObjectLiteral } from '../../common/ObjectLiteral';
 import { ColumnType } from '../types/ColumnTypes';
+import {OrmUtils} from "../../util/OrmUtils";
 
 
 /**
@@ -416,32 +417,67 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
         throw new OperationNotSupportedError();
     }
 
-    /**
+   /**
      * Creates a new unique constraint.
      */
-    async createUniqueConstraint(tableOrName: Table | string, uniqueConstraint: TableUnique): Promise<void> {
-        throw new OperationNotSupportedError();
+    async createUniqueConstraint(tableOrName: Table|string, uniqueConstraint: TableUnique): Promise<void> {
+        const table = tableOrName instanceof Table ? tableOrName : await this.getCachedTable(tableOrName);
+
+        // new unique constraint may be passed without name. In this case we generate unique name manually.
+        if (!uniqueConstraint.name)
+            uniqueConstraint.name = this.connection.namingStrategy.uniqueConstraintName(table.name, uniqueConstraint.columnNames);
+
+        const up = this.createUniqueConstraintSql(table, uniqueConstraint);
+        const down = this.dropUniqueConstraintSql(table, uniqueConstraint);
+        await this.executeQueries(up, down);
+        table.addUniqueConstraint(uniqueConstraint);
+    }
+
+    /**
+     * Builds create unique constraint sql.
+     */
+    protected createUniqueConstraintSql(table: Table, uniqueConstraint: TableUnique): Query {
+        const columnNames = uniqueConstraint.columnNames.map(column => `"` + column + `"`).join(", ");
+        return new Query(`ALTER TABLE ${this.escapePath(table.name)} ADD CONSTRAINT "${uniqueConstraint.name}" UNIQUE (${columnNames})`);
+    }
+
+    /**
+     * Builds drop unique constraint sql.
+     */
+    protected dropUniqueConstraintSql(table: Table, uniqueOrName: TableUnique|string): Query {
+        const uniqueName = uniqueOrName instanceof TableUnique ? uniqueOrName.name : uniqueOrName;
+        return new Query(`ALTER TABLE ${this.escapePath(table.name)} DROP CONSTRAINT "${uniqueName}"`);
     }
 
     /**
      * Creates a new unique constraints.
      */
-    async createUniqueConstraints(tableOrName: Table | string, uniqueConstraints: TableUnique[]): Promise<void> {
-        throw new OperationNotSupportedError();
+    async createUniqueConstraints(tableOrName: Table|string, uniqueConstraints: TableUnique[]): Promise<void> {
+        const promises = uniqueConstraints.map(uniqueConstraint => this.createUniqueConstraint(tableOrName, uniqueConstraint));
+        await Promise.all(promises);
     }
 
     /**
      * Drops an unique constraint.
      */
-    async dropUniqueConstraint(tableOrName: Table | string, uniqueOrName: TableUnique | string): Promise<void> {
-        throw new OperationNotSupportedError();
+    async dropUniqueConstraint(tableOrName: Table|string, uniqueOrName: TableUnique|string): Promise<void> {
+        const table = tableOrName instanceof Table ? tableOrName : await this.getCachedTable(tableOrName);
+        const uniqueConstraint = uniqueOrName instanceof TableUnique ? uniqueOrName : table.uniques.find(u => u.name === uniqueOrName);
+        if (!uniqueConstraint)
+            throw new Error(`Supplied unique constraint was not found in table ${table.name}`);
+
+        const up = this.dropUniqueConstraintSql(table, uniqueConstraint);
+        const down = this.createUniqueConstraintSql(table, uniqueConstraint);
+        await this.executeQueries(up, down);
+        table.removeUniqueConstraint(uniqueConstraint);
     }
 
     /**
-     * Drops an unique constraints.
+     * Creates an unique constraints.
      */
-    async dropUniqueConstraints(tableOrName: Table | string, uniqueConstraints: TableUnique[]): Promise<void> {
-        throw new OperationNotSupportedError();
+    async dropUniqueConstraints(tableOrName: Table|string, uniqueConstraints: TableUnique[]): Promise<void> {
+        const promises = uniqueConstraints.map(uniqueConstraint => this.dropUniqueConstraint(tableOrName, uniqueConstraint));
+        await Promise.all(promises);
     }
 
     /**
@@ -730,6 +766,19 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
                     }
                     return tableColumn;
                 });
+
+            // find unique constraints of table, group them by constraint name and build TableUnique.
+            const tableUniqueConstraints = OrmUtils.uniq(dbConstraints.filter(dbConstraint => {
+                return (dbConstraint["TABLE_NAME"] === table.name || dbConstraint["TABLE_NAME"] === dbTable["TABLE_NAME"]) && dbConstraint["IS_UNIQUE_KEY"] === "TRUE" && dbConstraint["IS_PRIMARY_KEY"] !== "TRUE";
+            }), dbConstraint => dbConstraint["CONSTRAINT_NAME"]);
+
+            table.uniques = tableUniqueConstraints.map(constraint => {
+                const uniques = dbConstraints.filter(dbC => dbC["CONSTRAINT_NAME"] === constraint["CONSTRAINT_NAME"]);
+                return new TableUnique({
+                    name: constraint["CONSTRAINT_NAME"],
+                    columnNames: uniques.map(u => u["COLUMN_NAME"])
+                });
+            });
 
             // find check constraints of table, group them by constraint name and build TableCheck.
             table.checks = dbConstraints
