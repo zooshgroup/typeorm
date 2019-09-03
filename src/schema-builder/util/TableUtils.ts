@@ -22,6 +22,7 @@ export class TableUtils {
             comment: columnMetadata.comment,
             isGenerated: columnMetadata.isGenerated,
             generationStrategy: columnMetadata.generationStrategy,
+            sequenceName: columnMetadata.sequenceName,
             isNullable: columnMetadata.isNullable,
             type: driver.normalizeType(columnMetadata),
             isPrimary: columnMetadata.isPrimary,

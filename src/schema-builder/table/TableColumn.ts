@@ -43,7 +43,7 @@ export class TableColumn {
      * Specifies generation strategy if this column will use auto increment.
      * `rowid` option supported only in CockroachDB.
      */
-    generationStrategy?: "uuid"|"increment"|"rowid";
+    generationStrategy?: "uuid"|"increment"|"rowid"|"sequence";
 
     /**
      * Specifies sequence name for generation strategy increment.
@@ -161,6 +161,7 @@ export class TableColumn {
             this.isNullable = options.isNullable || false;
             this.isGenerated = options.isGenerated || false;
             this.generationStrategy = options.generationStrategy;
+            this.sequenceName = options.sequenceName;
             this.isPrimary = options.isPrimary || false;
             this.isUnique = options.isUnique || false;
             this.isArray = options.isArray || false;

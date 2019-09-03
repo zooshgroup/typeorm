@@ -1,26 +1,27 @@
-import {CockroachDriver} from "../driver/cockroachdb/CockroachDriver";
-import {PostgresConnectionOptions} from "../driver/postgres/PostgresConnectionOptions";
-import {SqlServerConnectionOptions} from "../driver/sqlserver/SqlServerConnectionOptions";
-import {Table} from "./table/Table";
-import {TableColumn} from "./table/TableColumn";
-import {TableForeignKey} from "./table/TableForeignKey";
-import {TableIndex} from "./table/TableIndex";
-import {QueryRunner} from "../query-runner/QueryRunner";
-import {ColumnMetadata} from "../metadata/ColumnMetadata";
-import {EntityMetadata} from "../metadata/EntityMetadata";
-import {PromiseUtils} from "../util/PromiseUtils";
-import {Connection} from "../connection/Connection";
-import {SchemaBuilder} from "./SchemaBuilder";
-import {SqlInMemory} from "../driver/SqlInMemory";
-import {TableUtils} from "./util/TableUtils";
-import {TableColumnOptions} from "./options/TableColumnOptions";
-import {PostgresDriver} from "../driver/postgres/PostgresDriver";
-import {SqlServerDriver} from "../driver/sqlserver/SqlServerDriver";
-import {MysqlDriver} from "../driver/mysql/MysqlDriver";
-import {TableUnique} from "./table/TableUnique";
-import {TableCheck} from "./table/TableCheck";
-import {TableExclusion} from "./table/TableExclusion";
-import {View} from "./view/View";
+import { CockroachDriver } from "../driver/cockroachdb/CockroachDriver";
+import { PostgresConnectionOptions } from "../driver/postgres/PostgresConnectionOptions";
+import { SqlServerConnectionOptions } from "../driver/sqlserver/SqlServerConnectionOptions";
+import { Table } from "./table/Table";
+import { Sequence } from "./sequence/Sequence";
+import { TableColumn } from "./table/TableColumn";
+import { TableForeignKey } from "./table/TableForeignKey";
+import { TableIndex } from "./table/TableIndex";
+import { QueryRunner } from "../query-runner/QueryRunner";
+import { ColumnMetadata } from "../metadata/ColumnMetadata";
+import { EntityMetadata } from "../metadata/EntityMetadata";
+import { PromiseUtils } from "../util/PromiseUtils";
+import { Connection } from "../connection/Connection";
+import { SchemaBuilder } from "./SchemaBuilder";
+import { SqlInMemory } from "../driver/SqlInMemory";
+import { TableUtils } from "./util/TableUtils";
+import { TableColumnOptions } from "./options/TableColumnOptions";
+import { PostgresDriver } from "../driver/postgres/PostgresDriver";
+import { SqlServerDriver } from "../driver/sqlserver/SqlServerDriver";
+import { MysqlDriver } from "../driver/mysql/MysqlDriver";
+import { TableUnique } from "./table/TableUnique";
+import { TableCheck } from "./table/TableCheck";
+import { TableExclusion } from "./table/TableExclusion";
+import { View } from "./view/View";
 import { HanaColumnDriver } from '../driver/hana/HanaColumnDriver';
 
 /**
@@ -69,6 +70,14 @@ export class RdbmsSchemaBuilder implements SchemaBuilder {
         if (!(this.connection.driver instanceof CockroachDriver))
             await this.queryRunner.startTransaction();
         try {
+            const sequencePathes: string[] = [];
+            this.entityToSyncMetadatas.forEach(metadata => {
+                metadata.generatedColumns.forEach(generatedColumn => {
+                    if (generatedColumn.sequenceName) {
+                        sequencePathes.push(generatedColumn.sequenceName);
+                    }
+                });
+            });
             const tablePaths = this.entityToSyncMetadatas.map(metadata => metadata.tablePath);
             // TODO: typeorm_metadata table needs only for Views for now.
             //  Remove condition or add new conditions if necessary (for CHECK constraints for example).
@@ -76,6 +85,7 @@ export class RdbmsSchemaBuilder implements SchemaBuilder {
                 await this.createTypeormMetadataTable();
             await this.queryRunner.getTables(tablePaths);
             await this.queryRunner.getViews([]);
+            await this.queryRunner.getSequences(sequencePathes);
             await this.executeSchemaSyncOperationsInProperOrder();
 
             // if cache is enabled then perform cache-synchronization as well
@@ -104,9 +114,18 @@ export class RdbmsSchemaBuilder implements SchemaBuilder {
     async log(): Promise<SqlInMemory> {
         this.queryRunner = this.connection.createQueryRunner("master");
         try {
+            const sequencePathes: string[] = [];
+            this.entityToSyncMetadatas.forEach(metadata => {
+                metadata.generatedColumns.forEach(generatedColumn => {
+                    if (generatedColumn.sequenceName) {
+                        sequencePathes.push(generatedColumn.sequenceName);
+                    }
+                });
+            });
             const tablePaths = this.entityToSyncMetadatas.map(metadata => metadata.tablePath);
             await this.queryRunner.getTables(tablePaths);
             await this.queryRunner.getViews([]);
+            await this.queryRunner.getSequences(sequencePathes);
             this.queryRunner.enableSqlMemory();
             await this.executeSchemaSyncOperationsInProperOrder();
 
@@ -167,6 +186,7 @@ export class RdbmsSchemaBuilder implements SchemaBuilder {
         await this.createCompositeUniqueConstraints();
         await this.createForeignKeys();
         await this.createViews();
+        await this.createNewSequences();
     }
 
     /**
@@ -363,10 +383,9 @@ export class RdbmsSchemaBuilder implements SchemaBuilder {
             // check if table does not exist yet
             const existTable = this.queryRunner.loadedTables.find(table => {
                 const database = metadata.database && metadata.database !== this.connection.driver.database ? metadata.database : undefined;
-                const schema = metadata.schema || (<SqlServerDriver|PostgresDriver|HanaColumnDriver>this.connection.driver).options.schema;
+                const schema = metadata.schema || (<SqlServerDriver | PostgresDriver | HanaColumnDriver>this.connection.driver).options.schema;
                 const fullTableName = this.connection.driver.buildTableName(metadata.tableName, schema, database);
 
-                console.log("createNewTables - existTable:" , table.name , fullTableName);
                 return table.name === fullTableName;
             });
             if (existTable)
@@ -381,7 +400,8 @@ export class RdbmsSchemaBuilder implements SchemaBuilder {
                 const tableMetaData = await this.queryRunner.getTable(metadata.tablePath);
                 if (tableMetaData) {
                     metadata.generatedColumns.forEach(columnMetadata => {
-                        tableMetaData.columns.filter(newMetadataColumn => newMetadataColumn.name === columnMetadata.propertyName).forEach(newMetadataColumn => columnMetadata.sequenceName = newMetadataColumn.sequenceName)
+                        tableMetaData.columns.filter(newMetadataColumn => newMetadataColumn.name === columnMetadata.propertyName && !columnMetadata.sequenceName)
+                            .forEach(newMetadataColumn => columnMetadata.sequenceName = newMetadataColumn.sequenceName)
                     })
                 }
             }
@@ -395,7 +415,7 @@ export class RdbmsSchemaBuilder implements SchemaBuilder {
             // check if view does not exist yet
             const existView = this.queryRunner.loadedViews.find(view => {
                 const database = metadata.database && metadata.database !== this.connection.driver.database ? metadata.database : undefined;
-                const schema = metadata.schema || (<SqlServerDriver|PostgresDriver|HanaColumnDriver>this.connection.driver).options.schema;
+                const schema = metadata.schema || (<SqlServerDriver | PostgresDriver | HanaColumnDriver>this.connection.driver).options.schema;
                 const fullViewName = this.connection.driver.buildTableName(metadata.tableName, schema, database);
                 const viewExpression = typeof view.expression === "string" ? view.expression.trim() : view.expression(this.connection).getQuery();
                 const metadataExpression = typeof metadata.expression === "string" ? metadata.expression.trim() : metadata.expression!(this.connection).getQuery();
@@ -413,11 +433,43 @@ export class RdbmsSchemaBuilder implements SchemaBuilder {
         });
     }
 
+    /**
+     * Creates sequences that do not exist in the database yet.
+     */
+    protected async createNewSequences(): Promise<void> {
+        const sequencePathes: string[] = [];
+        this.entityToSyncMetadatas.forEach(metadata => {
+            metadata.generatedColumns.forEach(generatedColumn => {
+                if (generatedColumn.sequenceName) {
+                    sequencePathes.push(generatedColumn.sequenceName);
+                }
+            });
+        });
+
+        await PromiseUtils.runInSequence(sequencePathes, async sequencePath => {
+            // check if sequence does not exist yet
+            const existSequence = this.queryRunner.loadedSequences.find(sequence => {
+                return sequence.name === sequencePath;
+            });
+            if (existSequence)
+                return;
+
+            this.connection.logger.logSchemaBuild(`creating a new sequence: ${sequencePath}`);
+
+            // create a new sequence and sync it in the database
+            const sequence = new Sequence();
+            sequence.name = sequencePath;
+            await this.queryRunner.createSequence(sequence);
+
+            this.queryRunner.loadedSequences.push(sequence);
+        });
+    }
+
     protected async dropOldViews(): Promise<void> {
         await PromiseUtils.runInSequence(this.queryRunner.loadedViews, async view => {
             const existViewMetadata = this.viewEntityToSyncMetadatas.find(metadata => {
                 const database = metadata.database && metadata.database !== this.connection.driver.database ? metadata.database : undefined;
-                const schema = metadata.schema || (<SqlServerDriver|PostgresDriver|HanaColumnDriver>this.connection.driver).options.schema;
+                const schema = metadata.schema || (<SqlServerDriver | PostgresDriver | HanaColumnDriver>this.connection.driver).options.schema;
                 const fullViewName = this.connection.driver.buildTableName(metadata.tableName, schema, database);
                 const viewExpression = typeof view.expression === "string" ? view.expression.trim() : view.expression(this.connection).getQuery();
                 const metadataExpression = typeof metadata.expression === "string" ? metadata.expression.trim() : metadata.expression!(this.connection).getQuery();
@@ -631,8 +683,8 @@ export class RdbmsSchemaBuilder implements SchemaBuilder {
                 return;
 
             const newExclusions = metadata.exclusions
-            .filter(exclusionMetadata => !table.exclusions.find(tableExclusion => tableExclusion.name === exclusionMetadata.name))
-            .map(exclusionMetadata => TableExclusion.create(exclusionMetadata));
+                .filter(exclusionMetadata => !table.exclusions.find(tableExclusion => tableExclusion.name === exclusionMetadata.name))
+                .map(exclusionMetadata => TableExclusion.create(exclusionMetadata));
 
             if (newExclusions.length === 0)
                 return;
@@ -744,7 +796,7 @@ export class RdbmsSchemaBuilder implements SchemaBuilder {
      * Creates typeorm service table for storing user defined Views.
      */
     protected async createTypeormMetadataTable() {
-        const options = <SqlServerConnectionOptions|PostgresConnectionOptions>this.connection.driver.options;
+        const options = <SqlServerConnectionOptions | PostgresConnectionOptions>this.connection.driver.options;
         const typeormMetadataTable = this.connection.driver.buildTableName("typeorm_metadata", options.schema, options.database);
 
         await this.queryRunner.createTable(new Table(
@@ -753,32 +805,32 @@ export class RdbmsSchemaBuilder implements SchemaBuilder {
                 columns: [
                     {
                         name: "type",
-                        type: this.connection.driver.normalizeType({type: this.connection.driver.mappedDataTypes.metadataType}),
+                        type: this.connection.driver.normalizeType({ type: this.connection.driver.mappedDataTypes.metadataType }),
                         isNullable: false
                     },
                     {
                         name: "database",
-                        type: this.connection.driver.normalizeType({type: this.connection.driver.mappedDataTypes.metadataDatabase}),
+                        type: this.connection.driver.normalizeType({ type: this.connection.driver.mappedDataTypes.metadataDatabase }),
                         isNullable: true
                     },
                     {
                         name: "schema",
-                        type: this.connection.driver.normalizeType({type: this.connection.driver.mappedDataTypes.metadataSchema}),
+                        type: this.connection.driver.normalizeType({ type: this.connection.driver.mappedDataTypes.metadataSchema }),
                         isNullable: true
                     },
                     {
                         name: "table",
-                        type: this.connection.driver.normalizeType({type: this.connection.driver.mappedDataTypes.metadataTable}),
+                        type: this.connection.driver.normalizeType({ type: this.connection.driver.mappedDataTypes.metadataTable }),
                         isNullable: true
                     },
                     {
                         name: "name",
-                        type: this.connection.driver.normalizeType({type: this.connection.driver.mappedDataTypes.metadataName}),
+                        type: this.connection.driver.normalizeType({ type: this.connection.driver.mappedDataTypes.metadataName }),
                         isNullable: true
                     },
                     {
                         name: "value",
-                        type: this.connection.driver.normalizeType({type: this.connection.driver.mappedDataTypes.metadataValue}),
+                        type: this.connection.driver.normalizeType({ type: this.connection.driver.mappedDataTypes.metadataValue }),
                         isNullable: true
                     },
                 ]

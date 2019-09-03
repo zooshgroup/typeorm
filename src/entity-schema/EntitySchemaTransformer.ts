@@ -95,7 +95,8 @@ export class EntitySchemaTransformer {
                         array: column.array,
                         transformer: column.transformer,
                         spatialFeatureType: column.spatialFeatureType,
-                        srid: column.srid
+                        srid: column.srid,
+                        sequenceName : column.sequenceName,
                     }
                 };
                 metadataArgsStorage.columns.push(columnAgrs);

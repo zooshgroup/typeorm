@@ -167,4 +167,9 @@ export interface ColumnOptions extends ColumnCommonOptions {
      * SRID (Spatial Reference ID (EPSG code))
      */
     srid?: number;
+
+    /**
+     * Specifies sequence name for generation strategy increment.
+     */
+    sequenceName?: string;
 }

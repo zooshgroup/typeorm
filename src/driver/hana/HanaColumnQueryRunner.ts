@@ -7,6 +7,7 @@ import { TableForeignKey } from "../../schema-builder/table/TableForeignKey";
 import { TableIndex } from "../../schema-builder/table/TableIndex";
 import { QueryRunnerAlreadyReleasedError } from "../../error/QueryRunnerAlreadyReleasedError";
 import { View } from "../../schema-builder/view/View";
+import { Sequence } from "../../schema-builder/sequence/Sequence";
 import { Query } from "../Query";
 import { HanaColumnDriver } from "./HanaColumnDriver";
 import { ReadStream } from "../../platform/PlatformTools";
@@ -289,6 +290,34 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
         throw new OperationNotSupportedError();
     }
 
+     /**
+     * Creates a new sequence.
+     */
+    async createSequence(sequence: Sequence): Promise<void> {        
+        const upQueries: Query[] = [];
+        const downQueries: Query[] = [];
+        
+        upQueries.push(this.createSequenceSql(sequence));
+        downQueries.push(this.dropSequenceSql(sequence));
+        
+        await this.executeQueries(upQueries, downQueries);
+    }
+
+    /**
+     * Drops the sequence.
+     */
+    async dropSequence(target: Sequence|string): Promise<void> {
+        const upQueries: Query[] = [];
+        const downQueries: Query[] = [];
+
+        //const sequence = target instanceof Sequence ? target : await this.getCachedSequence(target);
+
+        upQueries.push(this.dropSequenceSql(target instanceof Sequence ? target.name : target ));
+        //downQueries.push(this.createSequenceSql(sequence));
+        
+        await this.executeQueries(upQueries, downQueries);
+    }
+
     /**
      * Renames a table.
      */
@@ -544,6 +573,11 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
             const dropTablesQuery = `SELECT 'DROP TABLE "' || SCHEMA_NAME || '"."' || TABLE_NAME || '" CASCADE' AS "query" FROM "TABLES" WHERE SCHEMA_NAME = '${currentSchema}'`;
             const dropTableQueries: ObjectLiteral[] = await this.query(dropTablesQuery);
             await Promise.all(dropTableQueries.map(query => this.query(query["query"])));
+
+            const dropSequencesQuery = `SELECT 'DROP SEQUENCE "' || SCHEMA_NAME || '"."' || SEQUENCE_NAME || '"' AS "query" FROM "SEQUENCES" WHERE SCHEMA_NAME = '${currentSchema}'`;
+            const dropSequencesQueries: ObjectLiteral[] = await this.query(dropSequencesQuery);
+            await Promise.all(dropSequencesQueries.map(query => this.query(query["query"])));
+
             await this.commitTransaction();
 
         } catch (error) {
@@ -567,6 +601,26 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
 
     protected async loadViews(viewNames: string[]): Promise<View[]> {
         return [];
+    }
+
+    protected async loadSequences(sequencePathes: string[]): Promise<Sequence[]> {
+        if (!sequencePathes || !sequencePathes.length)
+            return [];
+
+        const currentSchema = await this.getCurrentSchema();
+
+        const sequenceNamesString = sequencePathes.map(name => "'" + (name.startsWith(currentSchema + ".") ? name.substring(currentSchema.length + 1) : name)  + "'").join(", ");
+
+        const sequencesSql = `SELECT * FROM "SEQUENCES" WHERE "SEQUENCE_NAME" IN (${sequenceNamesString}) AND SCHEMA_NAME = '${currentSchema}'`;
+
+        const dbSequences : ObjectLiteral[]= await this.query(sequencesSql);
+
+        return dbSequences.map(dbSequence => {
+            const sequence = new Sequence();
+            sequence.name = dbSequence["SEQUENCE_NAME"];
+            
+            return sequence;
+        });
     }
 
     /**
@@ -685,6 +739,17 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     protected dropTableSql(tableOrName: Table | string): Query {
         const tableName = tableOrName instanceof Table ? tableOrName.name : `\"${tableOrName}\"`;
         const query = `DROP TABLE ${tableName}`;
+        return new Query(query);
+    }
+
+    protected createSequenceSql(sequence: Sequence): Query {
+        const query = `CREATE SEQUENCE "${sequence.name}"`;
+        return new Query(query);
+    }
+
+    protected dropSequenceSql(sequenceOrName: Sequence | string): Query {
+        const sequenceName = sequenceOrName instanceof Sequence ? sequenceOrName.name : `\"${sequenceOrName}\"`;
+        const query = `DROP SEQUENCE "${sequenceName}"`;
         return new Query(query);
     }
 

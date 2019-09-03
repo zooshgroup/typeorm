@@ -5,6 +5,7 @@ import { Table } from "../../schema-builder/table/Table";
 import { TableForeignKey } from "../../schema-builder/table/TableForeignKey";
 import { TableIndex } from "../../schema-builder/table/TableIndex";
 import {View} from "../../schema-builder/view/View";
+import {Sequence} from "../../schema-builder/sequence/Sequence";
 import {
     AggregationCursor,
     BulkWriteOpResultObject,
@@ -99,6 +100,11 @@ export class MongoQueryRunner implements QueryRunner {
      * All synchronized views in the database.
      */
     loadedViews: View[];
+    
+    /**
+     * All synchronized sequences in the database.
+     */
+    loadedSequences: Sequence[] = [];
 
     /**
      * Real database connection from a connection pool used to perform queries.
@@ -506,6 +512,21 @@ export class MongoQueryRunner implements QueryRunner {
         throw new Error(`Schema update queries are not supported by MongoDB driver.`);
     }
 
+    
+    /**
+     * Loads given sequence's data from the database.
+     */
+    async getSequence(sequencePath: string): Promise<Sequence|undefined> {
+        throw new Error(`Schema update queries are not supported by MongoDB driver.`);
+    }
+
+    /**
+     * Loads given sequence's data from the database.
+     */
+    async getSequences(sequencePathes: string[]): Promise<Sequence[]> {
+        throw new Error(`Schema update queries are not supported by MongoDB driver.`);
+    }
+
     /**
      * Checks if database with the given name exist.
      */
@@ -587,6 +608,20 @@ export class MongoQueryRunner implements QueryRunner {
      * Drops the view.
      */
     async dropView(target: View|string): Promise<void> {
+        throw new Error(`Schema update queries are not supported by MongoDB driver.`);
+    }
+
+    /**
+     * Creates a new sequence.
+     */
+    async createSequence(sequence: Sequence): Promise<void> {
+        throw new Error(`Schema update queries are not supported by MongoDB driver.`);
+    }
+
+    /**
+     * Drops the sequence.
+     */
+    async dropSequence(target: Sequence|string): Promise<void> {
         throw new Error(`Schema update queries are not supported by MongoDB driver.`);
     }
 
