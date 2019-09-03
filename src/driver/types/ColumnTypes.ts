@@ -99,7 +99,7 @@ export type SimpleColumnType =
     |"money" // postgres, mssql
 
     // boolean types
-    |"boolean" // postgres, sqlite, mysql, cockroachdb
+    |"boolean" // postgres, sqlite, mysql, cockroachdb, hana
     |"bool" // postgres, mysql, cockroachdb
 
     // text/binary types

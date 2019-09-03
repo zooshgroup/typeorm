@@ -22,6 +22,7 @@ import { OperationNotSupportedError } from '../../error/OperationNotSupportedErr
 import { ObjectLiteral } from '../../common/ObjectLiteral';
 import { ColumnType } from '../types/ColumnTypes';
 
+
 /**
  * Runs queries on a single mysql database connection.
  */
@@ -236,7 +237,8 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Creates a new table.
      */
-    async createTable(table: Table, ifNotExist: boolean = false, createForeignKeys: boolean = true): Promise<void> {
+    async createTable(table: Table, ifNotExist: boolean = false, createForeignKeys: boolean = true, createIndices: boolean = true): Promise<void> {
+
         if (ifNotExist) {
             const isTableExist = await this.hasTable(table);
             if (isTableExist) return Promise.resolve();
@@ -250,8 +252,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
         upQueries.push(this.createPrimaryKeySql(table, table.primaryColumns.map(column => column.name)));
         downQueries.push(this.dropPrimaryKeySql(table));
 
-/*   TODO --------------
-      // if createForeignKeys is true, we must drop created foreign keys in down query.
+        // if createForeignKeys is true, we must drop created foreign keys in down query.
         // createTable does not need separate method to create foreign keys, because it create fk's in the same query with table creation.
         if (createForeignKeys)
             table.foreignKeys.forEach(foreignKey => downQueries.push(this.dropForeignKeySql(table, foreignKey)));
@@ -264,7 +265,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
                 upQueries.push(this.createIndexSql(table, index));
                 downQueries.push(this.dropIndexSql(index));
             });
-        } */
+        }
 
         await this.executeQueries(upQueries, downQueries);
     }
@@ -272,8 +273,36 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Drop the table.
      */
-    async dropTable(target: Table | string, ifExist?: boolean, dropForeignKeys: boolean = true): Promise<void> {
-        throw new OperationNotSupportedError();
+    async dropTable(tableOrName: Table|string, ifExist?: boolean, dropForeignKeys: boolean = true, dropIndices: boolean = true): Promise<void> {// It needs because if table does not exist and dropForeignKeys or dropIndices is true, we don't need
+        // to perform drop queries for foreign keys and indices.
+        if (ifExist) {
+            const isTableExist = await this.hasTable(tableOrName);
+            if (!isTableExist) return Promise.resolve();
+        }
+
+        // if dropTable called with dropForeignKeys = true, we must create foreign keys in down query.
+        const createForeignKeys: boolean = dropForeignKeys;
+        const table = tableOrName instanceof Table ? tableOrName : await this.getCachedTable(tableOrName);
+        const upQueries: Query[] = [];
+        const downQueries: Query[] = [];
+
+
+        if (dropIndices) {
+            table.indices.forEach(index => {
+                upQueries.push(this.dropIndexSql(index));
+                downQueries.push(this.createIndexSql(table, index));
+            });
+        }
+
+        // if dropForeignKeys is true, we just drop the table, otherwise we also drop table foreign keys.
+        // createTable does not need separate method to create foreign keys, because it create fk's in the same query with table creation.
+        if (dropForeignKeys)
+            table.foreignKeys.forEach(foreignKey => upQueries.push(this.dropForeignKeySql(table, foreignKey)));
+
+        upQueries.push(this.dropTableSql(table));
+        downQueries.push(this.createTableSql(table, createForeignKeys));
+
+        await this.executeQueries(upQueries, downQueries);
     }
 
     /**
@@ -349,17 +378,25 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Changes a column in the table.
      */
-    async changeColumn(tableOrName: Table | string, oldColumnOrName: TableColumn | string, newColumn: TableColumn): Promise<void> {
+    async changeColumn(tableOrName: Table|string, oldTableColumnOrName: TableColumn|string, newColumn: TableColumn): Promise<void> {
         throw new OperationNotSupportedError();
+    }
+
+    /**
+     * Extracts schema name from given Table object or table name string.
+     */
+    protected extractSchema(target: Table|string): string|undefined {
+        const tableName = target instanceof Table ? target.name : target;
+        return tableName.indexOf(".") === -1 ? this.driver.options.schema : tableName.split(".")[0];
     }
 
     /**
      * Changes a column in the table.
      */
-    async changeColumns(tableOrName: Table | string, changedColumns: { newColumn: TableColumn, oldColumn: TableColumn }[]): Promise<void> {
-        throw new OperationNotSupportedError();
+    async changeColumns(tableOrName: Table|string, changedColumns: { newColumn: TableColumn, oldColumn: TableColumn }[]): Promise<void> {
+        return; //throw new OperationNotSupportedError();
     }
-
+    
     /**
      * Drops column in the table.
      */
@@ -398,7 +435,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      * Updates composite primary keys.
      */
     async updatePrimaryKeys(tableOrName: Table | string, columns: TableColumn[]): Promise<void> {
-        throw new OperationNotSupportedError();
+        return; //throw new OperationNotSupportedError();
     }
 
     /**
@@ -440,14 +477,40 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      * Creates a new check constraint.
      */
     async createCheckConstraint(tableOrName: Table | string, checkConstraint: TableCheck): Promise<void> {
-        throw new OperationNotSupportedError();
+        const table = tableOrName instanceof Table ? tableOrName : await this.getCachedTable(tableOrName);
+
+        // new unique constraint may be passed without name. In this case we generate unique name manually.
+        if (!checkConstraint.name)
+            checkConstraint.name = this.connection.namingStrategy.checkConstraintName(table.name, checkConstraint.expression!);
+
+        const up = this.createCheckConstraintSql(table, checkConstraint);
+        const down = this.dropCheckConstraintSql(table, checkConstraint);
+        await this.executeQueries(up, down);
+        table.addCheckConstraint(checkConstraint);
     }
+
+    /**
+     * Builds create check constraint sql.
+     */
+    protected createCheckConstraintSql(table: Table, checkConstraint: TableCheck): Query {
+        return new Query(`ALTER TABLE ${this.escapePath(table.name)} ADD CONSTRAINT "${checkConstraint.name}" CHECK (${checkConstraint.expression})`);
+    }
+
+    /**
+     * Builds drop check constraint sql.
+     */
+    protected dropCheckConstraintSql(table: Table, checkOrName: TableCheck|string): Query {
+        const checkName = checkOrName instanceof TableCheck ? checkOrName.name : checkOrName;
+        return new Query(`ALTER TABLE ${this.escapePath(table.name)} DROP CONSTRAINT "${checkName}"`);
+    }
+
 
     /**
      * Creates a new check constraints.
      */
     async createCheckConstraints(tableOrName: Table | string, checkConstraints: TableCheck[]): Promise<void> {
-        throw new OperationNotSupportedError();
+        const promises = checkConstraints.map(checkConstraint => this.createCheckConstraint(tableOrName, checkConstraint));
+        await Promise.all(promises);
     }
 
     /**
@@ -503,7 +566,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      * Creates a new foreign keys.
      */
     async createForeignKeys(tableOrName: Table | string, foreignKeys: TableForeignKey[]): Promise<void> {
-        throw new OperationNotSupportedError();
+        return; //throw new OperationNotSupportedError();
     }
 
     /**
@@ -523,29 +586,45 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Creates a new index.
      */
-    async createIndex(tableOrName: Table | string, index: TableIndex): Promise<void> {
-        throw new OperationNotSupportedError();
+    async createIndex(tableOrName: Table|string, index: TableIndex): Promise<void> {
+        const table = tableOrName instanceof Table ? tableOrName : await this.getCachedTable(tableOrName);
+
+        // new index may be passed without name. In this case we generate index name manually.
+        if (!index.name)
+            index.name = this.connection.namingStrategy.indexName(table.name, index.columnNames, index.where);
+
+        const up = this.createIndexSql(table, index);
+        const down = this.dropIndexSql(index);
+        await this.executeQueries(up, down);
+        table.addIndex(index);
     }
 
     /**
      * Creates a new indices
      */
-    async createIndices(tableOrName: Table | string, indices: TableIndex[]): Promise<void> {
-        throw new OperationNotSupportedError();
+    async createIndices(tableOrName: Table|string, indices: TableIndex[]): Promise<void> {
+        const promises = indices.map(index => this.createIndex(tableOrName, index));
+        await Promise.all(promises);
     }
 
-    /**
-     * Drops an index.
-     */
-    async dropIndex(tableOrName: Table | string, indexOrName: TableIndex | string): Promise<void> {
-        throw new OperationNotSupportedError();
+    async dropIndex(tableOrName: Table|string, indexOrName: TableIndex|string): Promise<void> {
+        const table = tableOrName instanceof Table ? tableOrName : await this.getCachedTable(tableOrName);
+        const index = indexOrName instanceof TableIndex ? indexOrName : table.indices.find(i => i.name === indexOrName);
+        if (!index)
+            throw new Error(`Supplied index was not found in table ${table.name}`);
+
+        const up = this.dropIndexSql(index);
+        const down = this.createIndexSql(table, index);
+        await this.executeQueries(up, down);
+        table.removeIndex(index);
     }
 
     /**
      * Drops an indices from the table.
      */
-    async dropIndices(tableOrName: Table | string, indices: TableIndex[]): Promise<void> {
-        throw new OperationNotSupportedError();
+    async dropIndices(tableOrName: Table|string, indices: TableIndex[]): Promise<void> {
+        const promises = indices.map(index => this.dropIndex(tableOrName, index));
+        await Promise.all(promises);
     }
 
     /**
@@ -635,15 +714,19 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
         const currentSchema = await this.getCurrentSchema();
 
         // load tables, columns, indices and foreign keys
-        const tableNamesString = tableNames.map(name => "'" + (name.startsWith(currentSchema + ".") ? name.substring(currentSchema.length + 1) : name)  + "'").join(", ");
-        const tablesSql = `SELECT * FROM "TABLES" WHERE "TABLE_NAME" IN (${tableNamesString}) AND SCHEMA_NAME = '${currentSchema}'`;
-        const columnsSql = `SELECT * FROM "TABLE_COLUMNS" WHERE "TABLE_NAME" IN (${tableNamesString}) AND SCHEMA_NAME = '${currentSchema}'`;
-        const constraintsSql = `SELECT * FROM "CONSTRAINTS" WHERE "TABLE_NAME" IN (${tableNamesString}) AND SCHEMA_NAME = '${currentSchema}'`;
+        const tableNamesString = tableNames.map(name => "'" + this.driver.getShortTableName(name, currentSchema) + "'").join(", ");
+        const tablesSql = `SELECT * FROM "TABLES" WHERE "TABLE_NAME" IN (${tableNamesString}) AND "SCHEMA_NAME" = '${currentSchema}'`;
+        const columnsSql = `SELECT * FROM "TABLE_COLUMNS" WHERE "TABLE_NAME" IN (${tableNamesString}) AND "SCHEMA_NAME" = '${currentSchema}'`;
+        const constraintsSql = `SELECT * FROM "CONSTRAINTS" WHERE "TABLE_NAME" IN (${tableNamesString}) AND "SCHEMA_NAME" = '${currentSchema}'`;
+        const indexesSql = `SELECT * FROM "INDEXES" WHERE "TABLE_NAME" IN (${tableNamesString}) AND "SCHEMA_NAME" = '${currentSchema}'`;
+        const indexeColumnsSql = `SELECT * FROM "INDEX_COLUMNS" WHERE "TABLE_NAME" IN (${tableNamesString}) AND "SCHEMA_NAME" = '${currentSchema}'`;
 
-        const [dbTables, dbColumns, dbConstraints]: ObjectLiteral[][] = await Promise.all([
+        const [dbTables, dbColumns, dbConstraints, dbIndexes, dbIndexColumns]: ObjectLiteral[][] = await Promise.all([
             this.query(tablesSql),
             this.query(columnsSql),
-            this.query(constraintsSql)
+            this.query(constraintsSql),
+            this.query(indexesSql),
+            this.query(indexeColumnsSql)
         ]);
 
         // if tables were not found in the db, no need to proceed
@@ -657,7 +740,8 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
 
             // create columns from the loaded columns
             table.columns = dbColumns
-                .filter(dbColumn => dbColumn["TABLE_NAME"] === table.name || dbColumn["TABLE_NAME"] === dbTable["TABLE_NAME"])
+                .filter(dbColumn => {
+                    return dbColumn["TABLE_NAME"] === table.name || dbColumn["TABLE_NAME"] === dbTable["TABLE_NAME"];})
                 .map(dbColumn => {
                     const columnConstraints = dbConstraints.filter(dbConstraint => dbConstraint["TABLE_NAME"] === table.name && dbConstraint["COLUMN_NAME"] === dbColumn["COLUMN_NAME"]);
 
@@ -701,6 +785,30 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
                     return tableColumn;
                 });
 
+            // find check constraints of table, group them by constraint name and build TableCheck.
+            table.checks = dbConstraints
+                .filter(dbConstraint => (dbConstraint["TABLE_NAME"] === table.name || dbConstraint["TABLE_NAME"] === dbTable["TABLE_NAME"]) && dbConstraint["CHECK_CONDITION"] !== null)
+                .map(constraint => {
+                return new TableCheck({
+                    name: constraint["CONSTRAINT_NAME"],
+                    columnNames: [],
+                    expression: constraint["CHECK_CONDITION"]
+                });
+            });
+
+            // create TableIndex objects from the loaded indices
+            table.indices = dbIndexes
+                .filter(dbIndex => (dbIndex["TABLE_NAME"] === table.name || dbIndex["TABLE_NAME"] === dbTable["TABLE_NAME"]) && dbIndex["CONSTRAINT"] !== "PRIMARY KEY")
+                .map(dbIndex => {
+                    const tableIndex = new TableIndex({
+                        name: dbIndex["INDEX_NAME"],
+                        columnNames: dbIndexColumns.filter(dbIndexColumn => dbIndexColumn["INDEX_OID"] === dbIndex["INDEX_OID"]).map(dbIndexColumn => dbIndexColumn["COLUMN_NAME"]),
+                        isUnique: dbIndex["INDEX_TYPE"] ? (dbIndex["INDEX_TYPE"]).includes("UNIQUE") : false
+                    });
+
+                    return tableIndex;
+                });
+
             return table;
         });
     }
@@ -711,10 +819,22 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     protected createTableSql(table: Table, createForeignKeys?: boolean): Query {
 
         const columnDefinitions = table.columns.map(column => this.buildCreateColumnSql(column)).join(", ");
-        let sql = `CREATE COLUMN TABLE ${table.name} (${columnDefinitions}`;
+        let sql = `CREATE COLUMN TABLE ${this.escapePath(table)} (${columnDefinitions}`;
         //  TODO constraints, refrences, etc.
         sql += `)`;
         return new Query(sql);
+    }
+
+    /**
+     * Escapes given table or view path.
+     */
+    protected escapePath(target: Table|View|string, disableEscape?: boolean): string {
+        let tableName = target instanceof Table || target instanceof View ? target.name : target;
+        tableName = tableName.indexOf(".") === -1 && this.driver.options.schema ? `${this.driver.options.schema}.${tableName}` : tableName;
+
+        return tableName.split(".").map(i => {
+            return disableEscape ? i : `"${i}"`;
+        }).join(".");
     }
 
      /**
@@ -779,14 +899,16 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      * Builds create index sql.
      */
     protected createIndexSql(table: Table, index: TableIndex): Query {
-        throw new OperationNotSupportedError();
+        const columns = index.columnNames.map(columnName => `"${columnName}"`).join(", ");
+        return new Query(`CREATE ${index.isUnique ? "UNIQUE " : ""}INDEX "${index.name}" ON ${this.escapePath(table)} (${columns})`);
     }
 
     /**
      * Builds drop index sql.
      */
-    protected dropIndexSql(table: Table, indexOrName: TableIndex | string): Query {
-        throw new OperationNotSupportedError();
+    protected dropIndexSql(indexOrName: TableIndex|string): Query {
+        let indexName = indexOrName instanceof TableIndex ? indexOrName.name : indexOrName;
+        return new Query(`DROP INDEX "${indexName}"`);
     }
 
     /**
@@ -795,7 +917,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     protected createPrimaryKeySql(table: Table, columnNames: string[]): Query {
         const primaryKeyName = this.connection.namingStrategy.primaryKeyName(table.name, columnNames);
         const columnNamesString = columnNames.map(columnName => `"${columnName}"`).join(", ");
-        return new Query(`ALTER TABLE ${table.name} ADD CONSTRAINT "${primaryKeyName}" PRIMARY KEY (${columnNamesString})`);
+        return new Query(`ALTER TABLE ${this.escapePath(table)} ADD CONSTRAINT "${primaryKeyName}" PRIMARY KEY (${columnNamesString})`);
     }
 
     /**
@@ -804,7 +926,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     protected dropPrimaryKeySql(table: Table): Query {
         const columnNames = table.primaryColumns.map(column => column.name);
         const primaryKeyName = this.connection.namingStrategy.primaryKeyName(table.name, columnNames);
-        return new Query(`ALTER TABLE ${table.name} DROP CONSTRAINT "${primaryKeyName}"`);
+        return new Query(`ALTER TABLE ${this.escapePath(table)} DROP CONSTRAINT "${primaryKeyName}"`);
     }
 
     /**
@@ -822,13 +944,6 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     }
 
     protected parseTableName(target: Table | string) {
-        throw new OperationNotSupportedError();
-    }
-
-    /**
-     * Escapes given table or view path.
-     */
-    protected escapePath(target: Table | View | string, disableEscape?: boolean): string {
         throw new OperationNotSupportedError();
     }
 

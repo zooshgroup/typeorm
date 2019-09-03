@@ -18,6 +18,7 @@ import {BroadcasterResult} from "../subscriber/BroadcasterResult";
 import {EntitySchema} from "../";
 import {OracleDriver} from "../driver/oracle/OracleDriver";
 import {SequenceIdGenerator, SequenceParameter} from "./SequenceIdGenerator";
+import { HanaColumnDriver } from '../driver/hana/HanaColumnDriver';
 
 /**
  * Allows to build complex sql queries in a fashion way and execute those queries.
@@ -303,7 +304,11 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
 
         // add VALUES expression
         if (valuesExpression) {
-            query += ` VALUES ${valuesExpression}`;
+            if (this.connection.driver instanceof HanaColumnDriver) {
+                query += ` ${valuesExpression}`;
+            } else {
+                query += ` VALUES ${valuesExpression}`;
+            }
         } else {
             if (this.connection.driver instanceof MysqlDriver) { // special syntax for mysql DEFAULT VALUES insertion
                 query += " VALUES ()";
@@ -396,8 +401,14 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
             let parametersCount = Object.keys(this.expressionMap.nativeParameters).length;
             valueSets.forEach((valueSet, valueSetIndex) => {
                 columns.forEach((column, columnIndex) => {
-                    if (columnIndex === 0) {
-                        expression += "(";
+                    if (this.connection.driver instanceof HanaColumnDriver) {
+                        if (columnIndex === 0) {
+                            expression += "SELECT ";
+                        }
+                    } else {
+                        if (columnIndex === 0) {
+                            expression += "(";
+                        }
                     }
                     const paramName = "i" + valueSetIndex + "_" + column.databaseName;
 
@@ -460,7 +471,7 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
 
                     // if value for this column was not provided then insert default value
                     } else if (value === undefined) {
-                        if (this.connection.driver instanceof AbstractSqliteDriver) { // unfortunately sqlite does not support DEFAULT expression in INSERT queries
+                        if (this.connection.driver instanceof AbstractSqliteDriver || this.connection.driver instanceof HanaColumnDriver) { // unfortunately sqlite does not support DEFAULT expression in INSERT queries
                             if (column.default !== undefined) { // try to use default defined in the column
                                 expression += this.connection.driver.normalizeDefault(column);
                             } else {
@@ -499,14 +510,25 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
                         parametersCount++;
                     }
 
-                    if (columnIndex === columns.length - 1) {
-                        if (valueSetIndex === valueSets.length - 1) {
-                            expression += ")";
+                    if (this.connection.driver instanceof HanaColumnDriver) {
+                        if (columnIndex === columns.length - 1) {
+                            expression += " FROM DUMMY ";
+                            if (valueSetIndex !== valueSets.length - 1) {
+                                expression += "UNION ALL ";
+                            }
                         } else {
-                            expression += "), ";
+                            expression += ", ";
                         }
                     } else {
-                        expression += ", ";
+                        if (columnIndex === columns.length - 1) {
+                            if (valueSetIndex === valueSets.length - 1) {
+                                expression += ")";
+                            } else {
+                                expression += "), ";
+                            }
+                        } else {
+                            expression += ", ";
+                        }
                     }
                 });
             });
@@ -522,8 +544,14 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
             valueSets.forEach((valueSet, insertionIndex) => {
                 const columns = Object.keys(valueSet);
                 columns.forEach((columnName, columnIndex) => {
-                    if (columnIndex === 0) {
-                        expression += "(";
+                    if (this.connection.driver instanceof HanaColumnDriver) {
+                        if (columnIndex === 0) {
+                            expression += "SELECT ";
+                        }
+                    } else {
+                        if (columnIndex === 0) {
+                            expression += "(";
+                        }
                     }
                     const paramName = "i" + insertionIndex + "_" + columnName;
                     const value = valueSet[columnName];
@@ -534,7 +562,7 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
 
                     // if value for this column was not provided then insert default value
                     } else if (value === undefined) {
-                        if (this.connection.driver instanceof AbstractSqliteDriver) {
+                        if (this.connection.driver instanceof AbstractSqliteDriver || this.connection.driver instanceof HanaColumnDriver) {
                             expression += "NULL";
 
                         } else {
@@ -548,15 +576,25 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
                         parametersCount++;
                     }
 
-                    if (columnIndex === Object.keys(valueSet).length - 1) {
-                        if (insertionIndex === valueSets.length - 1) {
-                            expression += ")";
+                    if (this.connection.driver instanceof HanaColumnDriver) {
+                        if (columnIndex === columns.length - 1) {
+                            expression += " FROM DUMMY ";
+                            if (insertionIndex !== valueSets.length - 1) {
+                                expression += "UNION ALL ";
+                            }
                         } else {
-                            expression += "), ";
+                            expression += ", ";
                         }
-                    }
-                    else {
-                        expression += ", ";
+                    } else {
+                        if (columnIndex === columns.length - 1) {
+                            if (insertionIndex === valueSets.length - 1) {
+                                expression += ")";
+                            } else {
+                                expression += "), ";
+                            }
+                        } else {
+                            expression += ", ";
+                        }
                     }
                 });
             });

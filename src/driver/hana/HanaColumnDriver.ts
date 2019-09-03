@@ -63,7 +63,7 @@ export class HanaColumnDriver implements Driver {
     /**
      * Indicates if tree tables are supported by this driver.
      */
-    treeSupport = false;
+    treeSupport = true;
 
     /**
      * Gets list of supported column data types by a driver.
@@ -72,6 +72,7 @@ export class HanaColumnDriver implements Driver {
      * @see https://www.postgresql.org/docs/9.2/static/datatype.html
      */
     supportedDataTypes: ColumnType[] = [
+        "boolean",
         "tinyint",
         "smallint",
         "integer",
@@ -417,14 +418,22 @@ export class HanaColumnDriver implements Driver {
      * E.g. "mySchema"."myTable"
      */
     buildTableName(tableName: string, schema?: string): string {
-        return schema ? `"${schema}"."${tableName}"` : tableName;
+        return schema ? `${schema}.${tableName}` : tableName;
+    }
+
+    /**
+     * Remove with schema name to get the table name
+     * E.g. "mySchema"."myTable"
+     */
+    getShortTableName(fullTableName: string, schema?: string): string {
+        return schema && fullTableName.startsWith(schema + ".") ? fullTableName.substring(schema.length + 1) : fullTableName;
     }
 
     /**
      * Creates a database type from a given column metadata.
      */
     normalizeType(column: { type?: ColumnType, length?: number | string, precision?: number|null, scale?: number, isArray?: boolean }): string {
-        if (column.type === Number) {
+        if (column.type === Number || column.type === "int") {
             return "integer";
 
         } else if (column.type === String || column.type === "varchar" || column.type === "uuid") {
