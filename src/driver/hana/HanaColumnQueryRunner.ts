@@ -448,14 +448,40 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      * Creates a new check constraint.
      */
     async createCheckConstraint(tableOrName: Table | string, checkConstraint: TableCheck): Promise<void> {
-        throw new OperationNotSupportedError();
+        const table = tableOrName instanceof Table ? tableOrName : await this.getCachedTable(tableOrName);
+
+        // new unique constraint may be passed without name. In this case we generate unique name manually.
+        if (!checkConstraint.name)
+            checkConstraint.name = this.connection.namingStrategy.checkConstraintName(table.name, checkConstraint.expression!);
+
+        const up = this.createCheckConstraintSql(table, checkConstraint);
+        const down = this.dropCheckConstraintSql(table, checkConstraint);
+        await this.executeQueries(up, down);
+        table.addCheckConstraint(checkConstraint);
     }
+
+    /**
+     * Builds create check constraint sql.
+     */
+    protected createCheckConstraintSql(table: Table, checkConstraint: TableCheck): Query {
+        return new Query(`ALTER TABLE ${this.escapePath(table.name)} ADD CONSTRAINT "${checkConstraint.name}" CHECK (${checkConstraint.expression})`);
+    }
+
+    /**
+     * Builds drop check constraint sql.
+     */
+    protected dropCheckConstraintSql(table: Table, checkOrName: TableCheck|string): Query {
+        const checkName = checkOrName instanceof TableCheck ? checkOrName.name : checkOrName;
+        return new Query(`ALTER TABLE ${this.escapePath(table.name)} DROP CONSTRAINT "${checkName}"`);
+    }
+
 
     /**
      * Creates a new check constraints.
      */
     async createCheckConstraints(tableOrName: Table | string, checkConstraints: TableCheck[]): Promise<void> {
-        throw new OperationNotSupportedError();
+        const promises = checkConstraints.map(checkConstraint => this.createCheckConstraint(tableOrName, checkConstraint));
+        await Promise.all(promises);
     }
 
     /**
@@ -704,6 +730,17 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
                     }
                     return tableColumn;
                 });
+
+            // find check constraints of table, group them by constraint name and build TableCheck.
+            table.checks = dbConstraints
+                .filter(dbConstraint => (dbConstraint["TABLE_NAME"] === table.name || dbConstraint["TABLE_NAME"] === dbTable["TABLE_NAME"]) && dbConstraint["CHECK_CONDITION"] !== null)
+                .map(constraint => {
+                return new TableCheck({
+                    name: constraint["CONSTRAINT_NAME"],
+                    columnNames: [],
+                    expression: constraint["CHECK_CONDITION"]
+                });
+            });
 
             // create TableIndex objects from the loaded indices
             table.indices = dbIndexes
