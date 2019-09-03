@@ -433,7 +433,7 @@ export class HanaColumnDriver implements Driver {
      * Creates a database type from a given column metadata.
      */
     normalizeType(column: { type?: ColumnType, length?: number | string, precision?: number|null, scale?: number, isArray?: boolean }): string {
-        if (column.type === Number) {
+        if (column.type === Number || column.type === "int") {
             return "integer";
 
         } else if (column.type === String || column.type === "varchar" || column.type === "uuid") {

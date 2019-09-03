@@ -20,7 +20,6 @@ import { Broadcaster } from "../../subscriber/Broadcaster";
 import { OperationNotSupportedError } from '../../error/OperationNotSupportedError';
 import { ObjectLiteral } from '../../common/ObjectLiteral';
 import { ColumnType } from '../types/ColumnTypes';
-import { PromiseUtils} from "../../index";
 
 
 /**
@@ -553,18 +552,24 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
         await Promise.all(promises);
     }
 
-    /**
-     * Drops an index.
-     */
-    async dropIndex(tableOrName: Table | string, indexOrName: TableIndex | string): Promise<void> {
-        throw new OperationNotSupportedError();
+    async dropIndex(tableOrName: Table|string, indexOrName: TableIndex|string): Promise<void> {
+        const table = tableOrName instanceof Table ? tableOrName : await this.getCachedTable(tableOrName);
+        const index = indexOrName instanceof TableIndex ? indexOrName : table.indices.find(i => i.name === indexOrName);
+        if (!index)
+            throw new Error(`Supplied index was not found in table ${table.name}`);
+
+        const up = this.dropIndexSql(index);
+        const down = this.createIndexSql(table, index);
+        await this.executeQueries(up, down);
+        table.removeIndex(index);
     }
 
     /**
      * Drops an indices from the table.
      */
-    async dropIndices(tableOrName: Table | string, indices: TableIndex[]): Promise<void> {
-        throw new OperationNotSupportedError();
+    async dropIndices(tableOrName: Table|string, indices: TableIndex[]): Promise<void> {
+        const promises = indices.map(index => this.dropIndex(tableOrName, index));
+        await Promise.all(promises);
     }
 
     /**
