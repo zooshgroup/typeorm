@@ -641,7 +641,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
                     tableColumn.isPrimary = columnConstraints.length > 0 && columnConstraints[0]["IS_PRIMARY_KEY"] === "TRUE";
                     tableColumn.isGenerated = dbColumn["GENERATED_ALWAYS_AS"] !== null;
                     tableColumn.comment = ""; // todo
-                    if (tableColumn.isGenerated) { // todo generationStrategy === "increment"
+                    if (tableColumn.isGenerated && dbColumn["GENERATION_TYPE"] === "ALWAYS AS IDENTITY") {
                         tableColumn.sequenceName = "_SYS_SEQUENCE_" + dbColumn["COLUMN_ID"] + "_#0_#";
                     }
                     return tableColumn;
