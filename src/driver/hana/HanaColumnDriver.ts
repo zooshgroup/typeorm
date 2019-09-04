@@ -14,7 +14,6 @@ import {QueryRunner} from "../../query-runner/QueryRunner";
 import {DataTypeDefaults} from "../types/DataTypeDefaults";
 import {TableColumn} from "../../schema-builder/table/TableColumn";
 import {EntityMetadata} from "../../metadata/EntityMetadata";
-import {OrmUtils} from "../../util/OrmUtils";
 import {ApplyValueTransformers} from "../../util/ApplyValueTransformers";
 
 /**
@@ -562,24 +561,7 @@ export class HanaColumnDriver implements Driver {
      * Creates generated map of values generated or returned by database after INSERT query.
      */
     createGeneratedMap(metadata: EntityMetadata, insertResult: any) {
-        const generatedMap = metadata.generatedColumns.reduce((map, generatedColumn) => {
-            // seems to be the only way to get the inserted id, see https://github.com/kripken/sql.js/issues/77
-            if (generatedColumn.isPrimary && generatedColumn.generationStrategy === "increment") {
-                const query = "SELECT \"" + generatedColumn.sequenceName + "\".CURRVAL as \"id\" FROM DUMMY";
-                try {
-                    let result = this.databaseConnection.exec(query);
-                    this.connection.logger.logQuery(query);
-                    return OrmUtils.mergeDeep(map, generatedColumn.createValueMap(result[0].id));
-                }
-                catch (e) {
-                    this.connection.logger.logQueryError(e, query, []);
-                }
-            }
-
-            return map;
-        }, {} as ObjectLiteral);
-
-        return Object.keys(generatedMap).length > 0 ? generatedMap : undefined;
+        return undefined;
     }
 
     /**

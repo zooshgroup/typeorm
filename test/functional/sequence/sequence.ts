@@ -14,7 +14,7 @@ describe("sequence", () => {
     beforeEach(() => reloadTestingDatabases(connections));
     after(() => closeTestingConnections(connections));
 
-    it.only("should persist with generated sequence", () => Promise.all(connections.map(async connection => {
+    it("should persist with generated sequence", () => Promise.all(connections.map(async connection => {
 
         const postRepository = connection.getRepository(Post);
         const queryRunner = connection.createQueryRunner();
@@ -26,6 +26,8 @@ describe("sequence", () => {
         const loadedPost = await postRepository.findOne(1);
         expect(loadedPost!.id).to.be.exist;
         postTable!.findColumnByName("id")!.type.should.be.equal("bigint");
+        expect(loadedPost!.id).to.equal(1);
+        expect(post!.id).to.equal(1);
 
         const post2 = new Post();
         post2.id = 20;

@@ -6,6 +6,7 @@ import {ColumnMetadata} from "../metadata/ColumnMetadata";
 import {UpdateResult} from "./result/UpdateResult";
 import {InsertResult} from "./result/InsertResult";
 import {OracleDriver} from "../driver/oracle/OracleDriver";
+import { HanaColumnDriver } from '../driver/hana/HanaColumnDriver';
 
 /**
  * Updates entity with returning results in the entity insert and update operations.
@@ -109,6 +110,14 @@ export class ReturningResultsEntityUpdator {
                     }
                 });
             }
+
+            metadata.generatedColumns.filter(generatedColumn => generatedColumn.generationStrategy === 'sequence' || (generatedColumn.generationStrategy === 'increment' && this.queryRunner.connection.driver instanceof HanaColumnDriver)).forEach(generatedColumn => {
+                let seqId = generatedColumn.getEntityValue(entity);
+                if (!seqId) // if it was not defined by a user then InsertQueryBuilder generates it by its own, get this generated value
+                    seqId = this.expressionMap.nativeParameters["sequence_" + generatedColumn.databaseName + entityIndex];
+
+                OrmUtils.mergeDeep(generatedMap, generatedColumn.createValueMap(seqId));
+            });
 
             this.queryRunner.manager.merge(metadata.target as any, entity, generatedMap); // todo: this should not be here, but problem with below line
             return generatedMap;

@@ -21,7 +21,7 @@ import { Broadcaster } from "../../subscriber/Broadcaster";
 import { OperationNotSupportedError } from '../../error/OperationNotSupportedError';
 import { ObjectLiteral } from '../../common/ObjectLiteral';
 import { ColumnType } from '../types/ColumnTypes';
-import {OrmUtils} from "../../util/OrmUtils";
+import { OrmUtils } from "../../util/OrmUtils";
 
 
 /**
@@ -274,7 +274,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Drop the table.
      */
-    async dropTable(tableOrName: Table|string, ifExist?: boolean, dropForeignKeys: boolean = true, dropIndices: boolean = true): Promise<void> {// It needs because if table does not exist and dropForeignKeys or dropIndices is true, we don't need
+    async dropTable(tableOrName: Table | string, ifExist?: boolean, dropForeignKeys: boolean = true, dropIndices: boolean = true): Promise<void> {// It needs because if table does not exist and dropForeignKeys or dropIndices is true, we don't need
         // to perform drop queries for foreign keys and indices.
         if (ifExist) {
             const isTableExist = await this.hasTable(tableOrName);
@@ -320,31 +320,31 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
         throw new OperationNotSupportedError();
     }
 
-     /**
-     * Creates a new sequence.
-     */
-    async createSequence(sequence: Sequence): Promise<void> {        
+    /**
+    * Creates a new sequence.
+    */
+    async createSequence(sequence: Sequence): Promise<void> {
         const upQueries: Query[] = [];
         const downQueries: Query[] = [];
-        
+
         upQueries.push(this.createSequenceSql(sequence));
         downQueries.push(this.dropSequenceSql(sequence));
-        
+
         await this.executeQueries(upQueries, downQueries);
     }
 
     /**
      * Drops the sequence.
      */
-    async dropSequence(target: Sequence|string): Promise<void> {
+    async dropSequence(target: Sequence | string): Promise<void> {
         const upQueries: Query[] = [];
         const downQueries: Query[] = [];
 
         //const sequence = target instanceof Sequence ? target : await this.getCachedSequence(target);
 
-        upQueries.push(this.dropSequenceSql(target instanceof Sequence ? target.name : target ));
+        upQueries.push(this.dropSequenceSql(target instanceof Sequence ? target.name : target));
         //downQueries.push(this.createSequenceSql(sequence));
-        
+
         await this.executeQueries(upQueries, downQueries);
     }
 
@@ -379,14 +379,14 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Changes a column in the table.
      */
-    async changeColumn(tableOrName: Table|string, oldTableColumnOrName: TableColumn|string, newColumn: TableColumn): Promise<void> {
+    async changeColumn(tableOrName: Table | string, oldTableColumnOrName: TableColumn | string, newColumn: TableColumn): Promise<void> {
         throw new OperationNotSupportedError();
     }
 
     /**
      * Extracts schema name from given Table object or table name string.
      */
-    protected extractSchema(target: Table|string): string|undefined {
+    protected extractSchema(target: Table | string): string | undefined {
         const tableName = target instanceof Table ? target.name : target;
         return tableName.indexOf(".") === -1 ? this.driver.options.schema : tableName.split(".")[0];
     }
@@ -394,10 +394,10 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Changes a column in the table.
      */
-    async changeColumns(tableOrName: Table|string, changedColumns: { newColumn: TableColumn, oldColumn: TableColumn }[]): Promise<void> {
+    async changeColumns(tableOrName: Table | string, changedColumns: { newColumn: TableColumn, oldColumn: TableColumn }[]): Promise<void> {
         return; //throw new OperationNotSupportedError();
     }
-    
+
     /**
      * Drops column in the table.
      */
@@ -446,10 +446,10 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
         throw new OperationNotSupportedError();
     }
 
-   /**
-     * Creates a new unique constraint.
-     */
-    async createUniqueConstraint(tableOrName: Table|string, uniqueConstraint: TableUnique): Promise<void> {
+    /**
+      * Creates a new unique constraint.
+      */
+    async createUniqueConstraint(tableOrName: Table | string, uniqueConstraint: TableUnique): Promise<void> {
         const table = tableOrName instanceof Table ? tableOrName : await this.getCachedTable(tableOrName);
 
         // new unique constraint may be passed without name. In this case we generate unique name manually.
@@ -473,7 +473,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Builds drop unique constraint sql.
      */
-    protected dropUniqueConstraintSql(table: Table, uniqueOrName: TableUnique|string): Query {
+    protected dropUniqueConstraintSql(table: Table, uniqueOrName: TableUnique | string): Query {
         const uniqueName = uniqueOrName instanceof TableUnique ? uniqueOrName.name : uniqueOrName;
         return new Query(`ALTER TABLE ${this.escapePath(table.name)} DROP CONSTRAINT "${uniqueName}"`);
     }
@@ -481,7 +481,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Creates a new unique constraints.
      */
-    async createUniqueConstraints(tableOrName: Table|string, uniqueConstraints: TableUnique[]): Promise<void> {
+    async createUniqueConstraints(tableOrName: Table | string, uniqueConstraints: TableUnique[]): Promise<void> {
         const promises = uniqueConstraints.map(uniqueConstraint => this.createUniqueConstraint(tableOrName, uniqueConstraint));
         await Promise.all(promises);
     }
@@ -489,7 +489,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Drops an unique constraint.
      */
-    async dropUniqueConstraint(tableOrName: Table|string, uniqueOrName: TableUnique|string): Promise<void> {
+    async dropUniqueConstraint(tableOrName: Table | string, uniqueOrName: TableUnique | string): Promise<void> {
         const table = tableOrName instanceof Table ? tableOrName : await this.getCachedTable(tableOrName);
         const uniqueConstraint = uniqueOrName instanceof TableUnique ? uniqueOrName : table.uniques.find(u => u.name === uniqueOrName);
         if (!uniqueConstraint)
@@ -504,7 +504,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Creates an unique constraints.
      */
-    async dropUniqueConstraints(tableOrName: Table|string, uniqueConstraints: TableUnique[]): Promise<void> {
+    async dropUniqueConstraints(tableOrName: Table | string, uniqueConstraints: TableUnique[]): Promise<void> {
         const promises = uniqueConstraints.map(uniqueConstraint => this.dropUniqueConstraint(tableOrName, uniqueConstraint));
         await Promise.all(promises);
     }
@@ -535,7 +535,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Builds drop check constraint sql.
      */
-    protected dropCheckConstraintSql(table: Table, checkOrName: TableCheck|string): Query {
+    protected dropCheckConstraintSql(table: Table, checkOrName: TableCheck | string): Query {
         const checkName = checkOrName instanceof TableCheck ? checkOrName.name : checkOrName;
         return new Query(`ALTER TABLE ${this.escapePath(table.name)} DROP CONSTRAINT "${checkName}"`);
     }
@@ -622,7 +622,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Creates a new index.
      */
-    async createIndex(tableOrName: Table|string, index: TableIndex): Promise<void> {
+    async createIndex(tableOrName: Table | string, index: TableIndex): Promise<void> {
         const table = tableOrName instanceof Table ? tableOrName : await this.getCachedTable(tableOrName);
 
         // new index may be passed without name. In this case we generate index name manually.
@@ -638,12 +638,12 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Creates a new indices
      */
-    async createIndices(tableOrName: Table|string, indices: TableIndex[]): Promise<void> {
+    async createIndices(tableOrName: Table | string, indices: TableIndex[]): Promise<void> {
         const promises = indices.map(index => this.createIndex(tableOrName, index));
         await Promise.all(promises);
     }
 
-    async dropIndex(tableOrName: Table|string, indexOrName: TableIndex|string): Promise<void> {
+    async dropIndex(tableOrName: Table | string, indexOrName: TableIndex | string): Promise<void> {
         const table = tableOrName instanceof Table ? tableOrName : await this.getCachedTable(tableOrName);
         const index = indexOrName instanceof TableIndex ? indexOrName : table.indices.find(i => i.name === indexOrName);
         if (!index)
@@ -658,7 +658,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Drops an indices from the table.
      */
-    async dropIndices(tableOrName: Table|string, indices: TableIndex[]): Promise<void> {
+    async dropIndices(tableOrName: Table | string, indices: TableIndex[]): Promise<void> {
         const promises = indices.map(index => this.dropIndex(tableOrName, index));
         await Promise.all(promises);
     }
@@ -724,16 +724,16 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
 
         const currentSchema = await this.getCurrentSchema();
 
-        const sequenceNamesString = sequencePathes.map(name => "'" + (name.startsWith(currentSchema + ".") ? name.substring(currentSchema.length + 1) : name)  + "'").join(", ");
+        const sequenceNamesString = sequencePathes.map(name => "'" + (name.startsWith(currentSchema + ".") ? name.substring(currentSchema.length + 1) : name) + "'").join(", ");
 
         const sequencesSql = `SELECT * FROM "SEQUENCES" WHERE "SEQUENCE_NAME" IN (${sequenceNamesString}) AND SCHEMA_NAME = '${currentSchema}'`;
 
-        const dbSequences : ObjectLiteral[]= await this.query(sequencesSql);
+        const dbSequences: ObjectLiteral[] = await this.query(sequencesSql);
 
         return dbSequences.map(dbSequence => {
             const sequence = new Sequence();
             sequence.name = dbSequence["SEQUENCE_NAME"];
-            
+
             return sequence;
         });
     }
@@ -777,7 +777,8 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
             // create columns from the loaded columns
             table.columns = dbColumns
                 .filter(dbColumn => {
-                    return dbColumn["TABLE_NAME"] === table.name || dbColumn["TABLE_NAME"] === dbTable["TABLE_NAME"];})
+                    return dbColumn["TABLE_NAME"] === table.name || dbColumn["TABLE_NAME"] === dbTable["TABLE_NAME"];
+                })
                 .map(dbColumn => {
                     const columnConstraints = dbConstraints.filter(dbConstraint => dbConstraint["TABLE_NAME"] === table.name && dbConstraint["COLUMN_NAME"] === dbColumn["COLUMN_NAME"]);
 
@@ -813,11 +814,8 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
                     tableColumn.isNullable = dbColumn["IS_NULLABLE"] === "TRUE";
                     tableColumn.isUnique = columnConstraints.length > 0 && columnConstraints[0]["IS_UNIQUE_KEY"] === "TRUE";
                     tableColumn.isPrimary = columnConstraints.length > 0 && columnConstraints[0]["IS_PRIMARY_KEY"] === "TRUE";
-                    tableColumn.isGenerated = dbColumn["GENERATED_ALWAYS_AS"] !== null;
+                    tableColumn.isGenerated = dbColumn["GENERATED_ALWAYS_AS"] !== null; // todo this will not be set
                     tableColumn.comment = ""; // todo
-                    if (tableColumn.isGenerated && dbColumn["GENERATION_TYPE"] === "ALWAYS AS IDENTITY") {
-                        tableColumn.sequenceName = "_SYS_SEQUENCE_" + dbColumn["COLUMN_ID"] + "_#0_#";
-                    }
                     return tableColumn;
                 });
 
@@ -838,12 +836,12 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
             table.checks = dbConstraints
                 .filter(dbConstraint => (dbConstraint["TABLE_NAME"] === table.name || dbConstraint["TABLE_NAME"] === dbTable["TABLE_NAME"]) && dbConstraint["CHECK_CONDITION"] !== null)
                 .map(constraint => {
-                return new TableCheck({
-                    name: constraint["CONSTRAINT_NAME"],
-                    columnNames: [],
-                    expression: constraint["CHECK_CONDITION"]
+                    return new TableCheck({
+                        name: constraint["CONSTRAINT_NAME"],
+                        columnNames: [],
+                        expression: constraint["CHECK_CONDITION"]
+                    });
                 });
-            });
 
             // create TableIndex objects from the loaded indices
             table.indices = dbIndexes
@@ -877,7 +875,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Escapes given table or view path.
      */
-    protected escapePath(target: Table|View|string, disableEscape?: boolean): string {
+    protected escapePath(target: Table | View | string, disableEscape?: boolean): string {
         let tableName = target instanceof Table || target instanceof View ? target.name : target;
         tableName = tableName.indexOf(".") === -1 && this.driver.options.schema ? `${this.driver.options.schema}.${tableName}` : tableName;
 
@@ -886,17 +884,15 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
         }).join(".");
     }
 
-     /**
-     * Builds a query for create column.
-     */
+    /**
+    * Builds a query for create column.
+    */
     protected buildCreateColumnSql(column: TableColumn) {
         let c = `"${column.name}" ` + this.connection.driver.createFullType(column);
         if (column.default !== undefined && column.default !== null) // DEFAULT must be placed before NOT NULL
             c += " DEFAULT " + column.default;
         if (column.isNullable !== true && !column.isGenerated) // NOT NULL is not supported with GENERATED
             c += " NOT NULL";
-        if (column.isGenerated === true && column.generationStrategy === "increment")
-            c += " GENERATED ALWAYS AS IDENTITY";
 
         return c;
     }
@@ -955,7 +951,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Builds drop index sql.
      */
-    protected dropIndexSql(indexOrName: TableIndex|string): Query {
+    protected dropIndexSql(indexOrName: TableIndex | string): Query {
         let indexName = indexOrName instanceof TableIndex ? indexOrName.name : indexOrName;
         return new Query(`DROP INDEX "${indexName}"`);
     }

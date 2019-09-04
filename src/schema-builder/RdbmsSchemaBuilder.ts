@@ -70,14 +70,6 @@ export class RdbmsSchemaBuilder implements SchemaBuilder {
         if (!(this.connection.driver instanceof CockroachDriver))
             await this.queryRunner.startTransaction();
         try {
-            const sequencePathes: string[] = [];
-            this.entityToSyncMetadatas.forEach(metadata => {
-                metadata.generatedColumns.forEach(generatedColumn => {
-                    if (generatedColumn.sequenceName) {
-                        sequencePathes.push(generatedColumn.sequenceName);
-                    }
-                });
-            });
             const tablePaths = this.entityToSyncMetadatas.map(metadata => metadata.tablePath);
             // TODO: typeorm_metadata table needs only for Views for now.
             //  Remove condition or add new conditions if necessary (for CHECK constraints for example).
@@ -85,7 +77,7 @@ export class RdbmsSchemaBuilder implements SchemaBuilder {
                 await this.createTypeormMetadataTable();
             await this.queryRunner.getTables(tablePaths);
             await this.queryRunner.getViews([]);
-            await this.queryRunner.getSequences(sequencePathes);
+            await this.queryRunner.getSequences(this.getRequiredSequences());
             await this.executeSchemaSyncOperationsInProperOrder();
 
             // if cache is enabled then perform cache-synchronization as well
@@ -114,18 +106,10 @@ export class RdbmsSchemaBuilder implements SchemaBuilder {
     async log(): Promise<SqlInMemory> {
         this.queryRunner = this.connection.createQueryRunner("master");
         try {
-            const sequencePathes: string[] = [];
-            this.entityToSyncMetadatas.forEach(metadata => {
-                metadata.generatedColumns.forEach(generatedColumn => {
-                    if (generatedColumn.sequenceName) {
-                        sequencePathes.push(generatedColumn.sequenceName);
-                    }
-                });
-            });
             const tablePaths = this.entityToSyncMetadatas.map(metadata => metadata.tablePath);
             await this.queryRunner.getTables(tablePaths);
             await this.queryRunner.getViews([]);
-            await this.queryRunner.getSequences(sequencePathes);
+            await this.queryRunner.getSequences(this.getRequiredSequences());
             this.queryRunner.enableSqlMemory();
             await this.executeSchemaSyncOperationsInProperOrder();
 
@@ -147,6 +131,21 @@ export class RdbmsSchemaBuilder implements SchemaBuilder {
     // -------------------------------------------------------------------------
     // Protected Methods
     // -------------------------------------------------------------------------
+
+    protected getRequiredSequences(): string[] {
+        const sequenceSet: Set<string> = new Set();
+            this.entityToSyncMetadatas.forEach(metadata => {
+                metadata.generatedColumns.forEach(generatedColumn => {
+                    if (generatedColumn.sequenceName) {
+                        sequenceSet.add(generatedColumn.sequenceName);
+                    } else if (generatedColumn.generationStrategy === 'increment' && this.queryRunner.connection.driver instanceof HanaColumnDriver) {
+                        sequenceSet.add("typeorm_seq");
+                    }
+                });
+            });
+
+        return [...sequenceSet];
+    }
 
     /**
      * Returns only entities that should be synced in the database.
@@ -396,16 +395,6 @@ export class RdbmsSchemaBuilder implements SchemaBuilder {
             // create a new table and sync it in the database
             const table = Table.create(metadata, this.connection.driver);
             await this.queryRunner.createTable(table, false, false);
-            if (metadata.connection.driver instanceof HanaColumnDriver) {
-                const tableMetaData = await this.queryRunner.getTable(metadata.tablePath);
-                if (tableMetaData) {
-                    metadata.generatedColumns.forEach(columnMetadata => {
-                        tableMetaData.columns.filter(newMetadataColumn => newMetadataColumn.name === columnMetadata.propertyName && !columnMetadata.sequenceName)
-                            .forEach(newMetadataColumn => columnMetadata.sequenceName = newMetadataColumn.sequenceName)
-                    })
-                }
-            }
-
             this.queryRunner.loadedTables.push(table);
         });
     }
@@ -437,16 +426,7 @@ export class RdbmsSchemaBuilder implements SchemaBuilder {
      * Creates sequences that do not exist in the database yet.
      */
     protected async createNewSequences(): Promise<void> {
-        const sequencePathes: string[] = [];
-        this.entityToSyncMetadatas.forEach(metadata => {
-            metadata.generatedColumns.forEach(generatedColumn => {
-                if (generatedColumn.sequenceName) {
-                    sequencePathes.push(generatedColumn.sequenceName);
-                }
-            });
-        });
-
-        await PromiseUtils.runInSequence(sequencePathes, async sequencePath => {
+        await PromiseUtils.runInSequence(this.getRequiredSequences(), async sequencePath => {
             // check if sequence does not exist yet
             const existSequence = this.queryRunner.loadedSequences.find(sequence => {
                 return sequence.name === sequencePath;

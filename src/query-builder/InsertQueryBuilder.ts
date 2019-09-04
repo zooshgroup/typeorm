@@ -89,6 +89,7 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
                 if (parameter instanceof SequenceParameter) {
                     const id = await InsertQueryBuilder.idGenerator.getId(this.obtainQueryRunner(), parameter.sequenceName);
                     parameters[index] = id;
+                    this.expressionMap.nativeParameters[parameter.parameterKey] = id
                 }
             };
 
@@ -359,6 +360,7 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
             // if user did not specified such list then return all columns except auto-increment one
             // for Oracle we return auto-increment column as well because Oracle does not support DEFAULT VALUES expression
             if (column.isGenerated && column.generationStrategy === "increment"
+                && !(this.connection.driver instanceof HanaColumnDriver)
                 && !(this.connection.driver instanceof OracleDriver)
                 && !(this.connection.driver instanceof AbstractSqliteDriver)
                 && !(this.connection.driver instanceof MysqlDriver))
@@ -462,10 +464,12 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
                         expression += this.connection.driver.createParameter(paramName, parametersCount);
                         parametersCount++;
 
-                    // if value for this column was not provided then insert default value
-                    } else if (column.sequenceName && column.isGenerated && column.generationStrategy === "sequence" && value === undefined) {
+                    // set sequence name to query later and reinsert value
+                    } else if (column.isGenerated && value === undefined &&
+                        (column.generationStrategy === "sequence" || (column.generationStrategy === 'increment' && this.connection.driver instanceof HanaColumnDriver))) {
                         const paramName = "sequence_" + column.databaseName + valueSetIndex;
-                        this.expressionMap.nativeParameters[paramName] = new SequenceParameter(column.sequenceName);
+                        const sequenceName = column.sequenceName ? column.sequenceName : "typeorm_seq";
+                        this.expressionMap.nativeParameters[paramName] = new SequenceParameter(paramName, sequenceName);
                         expression += this.connection.driver.createParameter(paramName, parametersCount);
                         parametersCount++;
 

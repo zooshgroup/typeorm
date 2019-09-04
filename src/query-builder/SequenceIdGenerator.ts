@@ -17,8 +17,10 @@ export class SequenceIdGenerator {
 export class SequenceParameter {
 
     sequenceName: string
+    parameterKey : string
 
-    constructor(sequenceName:string) {
+    constructor(parameterKey:string, sequenceName:string) {
+        this.parameterKey = parameterKey;
         this.sequenceName = sequenceName;
     }
 
