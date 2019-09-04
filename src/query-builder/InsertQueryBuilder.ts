@@ -305,7 +305,8 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
 
         // add VALUES expression
         if (valuesExpression) {
-            if (this.connection.driver instanceof HanaColumnDriver) {
+            const valueSets = this.getValueSets();
+            if (valueSets.length > 1 && this.connection.driver instanceof HanaColumnDriver) {
                 query += ` ${valuesExpression}`;
             } else {
                 query += ` VALUES ${valuesExpression}`;
@@ -403,7 +404,7 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
             let parametersCount = Object.keys(this.expressionMap.nativeParameters).length;
             valueSets.forEach((valueSet, valueSetIndex) => {
                 columns.forEach((column, columnIndex) => {
-                    if (this.connection.driver instanceof HanaColumnDriver) {
+                    if (valueSets.length > 1 && this.connection.driver instanceof HanaColumnDriver) {
                         if (columnIndex === 0) {
                             expression += "SELECT ";
                         }
@@ -514,7 +515,7 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
                         parametersCount++;
                     }
 
-                    if (this.connection.driver instanceof HanaColumnDriver) {
+                    if (valueSets.length > 1 && this.connection.driver instanceof HanaColumnDriver) {
                         if (columnIndex === columns.length - 1) {
                             expression += " FROM DUMMY ";
                             if (valueSetIndex !== valueSets.length - 1) {
@@ -548,7 +549,7 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
             valueSets.forEach((valueSet, insertionIndex) => {
                 const columns = Object.keys(valueSet);
                 columns.forEach((columnName, columnIndex) => {
-                    if (this.connection.driver instanceof HanaColumnDriver) {
+                    if (valueSets.length > 1 && this.connection.driver instanceof HanaColumnDriver) {
                         if (columnIndex === 0) {
                             expression += "SELECT ";
                         }
@@ -580,7 +581,7 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
                         parametersCount++;
                     }
 
-                    if (this.connection.driver instanceof HanaColumnDriver) {
+                    if (valueSets.length > 1 && this.connection.driver instanceof HanaColumnDriver) {
                         if (columnIndex === columns.length - 1) {
                             expression += " FROM DUMMY ";
                             if (insertionIndex !== valueSets.length - 1) {
