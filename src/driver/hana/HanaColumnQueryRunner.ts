@@ -867,7 +867,27 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
 
         const columnDefinitions = table.columns.map(column => this.buildCreateColumnSql(column)).join(", ");
         let sql = `CREATE COLUMN TABLE ${this.escapePath(table)} (${columnDefinitions}`;
+
         //  TODO constraints, refrences, etc.
+        if (table.uniques.length > 0) {
+            const uniquesSql = table.uniques.map(unique => {
+                const uniqueName = unique.name ? unique.name : this.connection.namingStrategy.uniqueConstraintName(table.name, unique.columnNames);
+                const columnNames = unique.columnNames.map(columnName => `"${columnName}"`).join(", ");
+                return `CONSTRAINT "${uniqueName}" UNIQUE (${columnNames})`;
+            }).join(", ");
+
+            sql += `, ${uniquesSql}`;
+        }
+
+        if (table.checks.length > 0) {
+            const checksSql = table.checks.map(check => {
+                const checkName = check.name ? check.name : this.connection.namingStrategy.checkConstraintName(table.name, check.expression!);
+                return `CONSTRAINT "${checkName}" CHECK (${check.expression})`;
+            }).join(", ");
+
+            sql += `, ${checksSql}`;
+        }
+
         sql += `)`;
         return new Query(sql);
     }

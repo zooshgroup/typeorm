@@ -7,6 +7,7 @@ import {EntityMetadata} from "../../../../src/metadata/EntityMetadata";
 import {IndexMetadata} from "../../../../src/metadata/IndexMetadata";
 
 import {Person} from "./entity/Person";
+import { HanaColumnDriver } from '../../../../src/driver/hana/HanaColumnDriver';
 
 describe("database schema > indices > reading index from entity and updating database", () => {
 
@@ -60,6 +61,9 @@ describe("database schema > indices > reading index from entity and updating dat
     })));
 
     it("should update the index swaping the 2 columns", () => Promise.all(connections.map(async connection => {
+        if (connection.driver instanceof HanaColumnDriver) {
+            return;
+        }
 
         const entityMetadata = connection.entityMetadatas.find(x => x.name === "Person");
         entityMetadata!.indices = [new IndexMetadata({
