@@ -141,7 +141,7 @@ export class HanaColumnDriver implements Driver {
         cacheIdentifier: "nvarchar",
         cacheTime: "integer",
         cacheDuration: "integer",
-        cacheQuery: "clob",
+        cacheQuery: "nvarchar(5000)" as any,
         cacheResult: "clob",
         metadataType: "nvarchar",
         metadataDatabase: "nvarchar",
