@@ -15,6 +15,7 @@ import {SqljsDriver} from "../driver/sqljs/SqljsDriver";
 import {MysqlDriver} from "../driver/mysql/MysqlDriver";
 import {BroadcasterResult} from "../subscriber/BroadcasterResult";
 import {EntitySchema} from "../index";
+import { HanaColumnDriver } from '../driver/hana/HanaColumnDriver';
 
 /**
  * Allows to build complex sql queries in a fashion way and execute those queries.
@@ -79,7 +80,7 @@ export class DeleteQueryBuilder<Entity> extends QueryBuilder<Entity> implements 
                 // don't return 0 because it could confuse. null means that we did not receive this value
                 deleteResult.affected = typeof result[1] === "number" ? result[1] : null;
 
-            } else if (driver instanceof OracleDriver) {
+            } else if (driver instanceof OracleDriver || driver instanceof HanaColumnDriver) {
                 deleteResult.affected = result;
 
             } else {
