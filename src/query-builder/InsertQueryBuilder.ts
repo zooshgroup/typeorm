@@ -468,7 +468,7 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
                     } else if (column.isGenerated && value === undefined &&
                         (column.generationStrategy === "sequence" || (column.generationStrategy === 'increment' && this.connection.driver instanceof HanaColumnDriver))) {
                         const paramName = "sequence_" + column.databaseName + valueSetIndex;
-                        const sequenceName = column.sequenceName ? column.sequenceName : "typeorm_seq";
+                        const sequenceName = column.sequenceName ? column.sequenceName : column.entityMetadata.name + "_" + column.propertyName + "_seq";
                         this.expressionMap.nativeParameters[paramName] = new SequenceParameter(paramName, sequenceName);
                         expression += this.connection.driver.createParameter(paramName, parametersCount);
                         parametersCount++;

@@ -139,7 +139,7 @@ export class RdbmsSchemaBuilder implements SchemaBuilder {
                     if (generatedColumn.sequenceName) {
                         sequenceSet.add(generatedColumn.sequenceName);
                     } else if (generatedColumn.generationStrategy === 'increment' && this.queryRunner.connection.driver instanceof HanaColumnDriver) {
-                        sequenceSet.add("typeorm_seq");
+                        sequenceSet.add(metadata.name + "_" + generatedColumn.propertyName + "_seq");
                     }
                 });
             });
