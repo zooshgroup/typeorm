@@ -1,20 +1,19 @@
-import {Driver} from "../Driver";
-import {ObjectLiteral} from "../../common/ObjectLiteral";
-import {DriverPackageNotInstalledError} from "../../error/DriverPackageNotInstalledError";
-import {ColumnMetadata} from "../../metadata/ColumnMetadata";
-import {HanaColumnQueryRunner} from "./HanaColumnQueryRunner";
-import {DateUtils} from "../../util/DateUtils";
-import {PlatformTools} from "../../platform/PlatformTools";
-import {Connection} from "../../connection/Connection";
-import {RdbmsSchemaBuilder} from "../../schema-builder/RdbmsSchemaBuilder";
-import {HanaConnectionOptions} from "./HanaConnectionOptions";
-import {MappedColumnTypes} from "../types/MappedColumnTypes";
-import {ColumnType} from "../types/ColumnTypes";
-import {QueryRunner} from "../../query-runner/QueryRunner";
-import {DataTypeDefaults} from "../types/DataTypeDefaults";
-import {TableColumn} from "../../schema-builder/table/TableColumn";
-import {EntityMetadata} from "../../metadata/EntityMetadata";
-import {ApplyValueTransformers} from "../../util/ApplyValueTransformers";
+import { Driver } from "../Driver";
+import { ObjectLiteral } from "../../common/ObjectLiteral";
+import { DriverPackageNotInstalledError } from "../../error/DriverPackageNotInstalledError";
+import { ColumnMetadata } from "../../metadata/ColumnMetadata";
+import { HanaColumnQueryRunner } from "./HanaColumnQueryRunner";
+import { DateUtils } from "../../util/DateUtils";
+import { PlatformTools } from "../../platform/PlatformTools";
+import { Connection } from "../../connection/Connection";
+import { RdbmsSchemaBuilder } from "../../schema-builder/RdbmsSchemaBuilder";
+import { HanaConnectionOptions } from "./HanaConnectionOptions";
+import { MappedColumnTypes } from "../types/MappedColumnTypes";
+import { ColumnType } from "../types/ColumnTypes";
+import { DataTypeDefaults } from "../types/DataTypeDefaults";
+import { TableColumn } from "../../schema-builder/table/TableColumn";
+import { EntityMetadata } from "../../metadata/EntityMetadata";
+import { ApplyValueTransformers } from "../../util/ApplyValueTransformers";
 
 /**
  * Organizes communication with PostgreSQL DBMS.
@@ -30,10 +29,10 @@ export class HanaColumnDriver implements Driver {
      */
     connection: Connection;
 
-        /**
-     * Real database connection with sqlite database.
+    /**
+     * Connection pool.
      */
-    databaseConnection: any;
+    pool: any;
 
     /**
      * Hana underlying library.
@@ -41,9 +40,9 @@ export class HanaColumnDriver implements Driver {
     hanaClient: any;
 
     /**
-     * We store all created query runners because we need to release them.
+     * Underlying pooling library.
      */
-    connectedQueryRunners: QueryRunner[] = [];
+    genericPool: any;
 
     // -------------------------------------------------------------------------
     // Public Implemented Properties
@@ -192,25 +191,44 @@ export class HanaColumnDriver implements Driver {
      * either create a pool and create connection when needed.
      */
     async connect(): Promise<void> {
-        this.databaseConnection = await new Promise((ok, fail) => {
-            const client=this.hanaClient.createConnection();
+        const factory = {
+            create: () => {
+                return new Promise((ok, fail) => {
+                    try {
+                        const client = this.hanaClient.createConnection();
+                        const params = {
+                            UID: this.options.username,
+                            PWD: this.options.password,
+                            HOST: this.options.host,
+                            PORT: this.options.port,
+                            CURRENTSCHEMA: this.options.schema
+                        }
 
-
-            const params = {
-                UID: this.options.username,
-                PWD: this.options.password,
-                HOST: this.options.host,
-                PORT: this.options.port,
-                CURRENTSCHEMA: this.options.schema
+                        client.connect(params, (err: any) => {
+                            if (err) {
+                                return fail(err);
+                            }
+                            client.setAutoCommit(false);
+                            ok(client);
+                        });
+                    } catch (err) {
+                        fail(err);
+                    }
+                });
+            },
+            destroy: function (hanaClient: any) {
+                hanaClient.disconnect();
             }
+        };
+        const opts = {
+            max: 10, // maximum size of the pool
+            min: 2 // minimum size of the pool
+        };
 
-            client.connect(params,(err: any) => {
-                if (err) return fail(err);
-                client.setAutoCommit(false);
-                ok(client);
-            });
-
-        });
+        this.pool = this.genericPool.createPool(factory, opts);
+        this.pool.on('factoryCreateError', function (err: any) {
+            console.log(err);
+        })
     }
 
     /**
@@ -224,7 +242,9 @@ export class HanaColumnDriver implements Driver {
      * Closes connection with database.
      */
     async disconnect(): Promise<void> {
-       // TODO
+        this.pool.drain().then(() =>
+            this.pool.clear()
+        );
     }
 
     /**
@@ -348,7 +368,7 @@ export class HanaColumnDriver implements Driver {
         } else if (columnMetadata.type === "cube") {
             value = value.replace(/[\(\)\s]+/g, "").split(",").map(Number);
 
-        } else if (columnMetadata.type === "enum" || columnMetadata.type === "simple-enum" ) {
+        } else if (columnMetadata.type === "enum" || columnMetadata.type === "simple-enum") {
             if (columnMetadata.isArray) {
                 // manually convert enum array to array of values (pg does not support, see https://github.com/brianc/node-pg-types/issues/56)
                 value = value !== "{}" ? (value as string).substr(1, (value as string).length - 2).split(",") : [];
@@ -431,7 +451,7 @@ export class HanaColumnDriver implements Driver {
     /**
      * Creates a database type from a given column metadata.
      */
-    normalizeType(column: { type?: ColumnType, length?: number | string, precision?: number|null, scale?: number, isArray?: boolean }): string {
+    normalizeType(column: { type?: ColumnType, length?: number | string, precision?: number | null, scale?: number, isArray?: boolean }): string {
         if (column.type === Number || column.type === "int") {
             return "integer";
 
@@ -501,7 +521,7 @@ export class HanaColumnDriver implements Driver {
     /**
      * Returns default column lengths, which is required on column creation.
      */
-    getColumnLength(column: ColumnMetadata|TableColumn): string {
+    getColumnLength(column: ColumnMetadata | TableColumn): string {
         if (column.length)
             return column.length.toString();
 
@@ -557,9 +577,9 @@ export class HanaColumnDriver implements Driver {
         return Promise.resolve();
     }
 
-   /**
-     * Creates generated map of values generated or returned by database after INSERT query.
-     */
+    /**
+      * Creates generated map of values generated or returned by database after INSERT query.
+      */
     createGeneratedMap(metadata: EntityMetadata, insertResult: any) {
         return undefined;
     }
@@ -588,7 +608,7 @@ export class HanaColumnDriver implements Driver {
                 || (columnMetadata.generationStrategy !== "uuid" && tableColumn.isGenerated !== columnMetadata.isGenerated);
         });
     }
-    
+
     /**
      * Returns true if driver supports RETURNING / OUTPUT statement.
      */
@@ -628,6 +648,7 @@ export class HanaColumnDriver implements Driver {
     protected loadDependencies(): void {
         try {
             this.hanaClient = PlatformTools.load("@sap/hana-client");
+            this.genericPool = PlatformTools.load("generic-pool");
         } catch (e) { // todo: better error for browser env
             throw new DriverPackageNotInstalledError("HANA", "@sap/hana-client");
         }
