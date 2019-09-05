@@ -789,13 +789,15 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
         const constraintsSql = `SELECT * FROM "CONSTRAINTS" WHERE "TABLE_NAME" IN (${tableNamesString}) AND "SCHEMA_NAME" = '${currentSchema}'`;
         const indexesSql = `SELECT * FROM "INDEXES" WHERE "TABLE_NAME" IN (${tableNamesString}) AND "SCHEMA_NAME" = '${currentSchema}'`;
         const indexeColumnsSql = `SELECT * FROM "INDEX_COLUMNS" WHERE "TABLE_NAME" IN (${tableNamesString}) AND "SCHEMA_NAME" = '${currentSchema}'`;
+        const foreignKeysSql = `SELECT * FROM "REFERENTIAL_CONSTRAINTS" WHERE "TABLE_NAME" IN (${tableNamesString}) AND "SCHEMA_NAME" = '${currentSchema}'`;
 
-        const [dbTables, dbColumns, dbConstraints, dbIndexes, dbIndexColumns]: ObjectLiteral[][] = await Promise.all([
+        const [dbTables, dbColumns, dbConstraints, dbIndexes, dbIndexColumns, dbForeignKeys]: ObjectLiteral[][] = await Promise.all([
             this.query(tablesSql),
             this.query(columnsSql),
             this.query(constraintsSql),
             this.query(indexesSql),
-            this.query(indexeColumnsSql)
+            this.query(indexeColumnsSql),
+            this.query(foreignKeysSql),
         ]);
 
         // if tables were not found in the db, no need to proceed
@@ -875,6 +877,23 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
                         expression: constraint["CHECK_CONDITION"]
                     });
                 });
+
+            // find foreign key constraints of table, group them by constraint name and build TableForeignKey.
+             const tableForeignKeyConstraints = OrmUtils.uniq(dbForeignKeys.filter(dbForeignKey => {
+                return dbForeignKey["TABLE_NAME"] === dbTable["TABLE_NAME"];
+            }), dbForeignKey => dbForeignKey["CONSTRAINT_NAME"]);
+
+            table.foreignKeys = tableForeignKeyConstraints.map(dbForeignKey => {
+                const foreignKeys = dbForeignKeys.filter(dbFk => dbFk["CONSTRAINT_NAME"] === dbForeignKey["CONSTRAINT_NAME"]);
+                return new TableForeignKey({
+                    name: dbForeignKey["CONSTRAINT_NAME"],
+                    columnNames: foreignKeys.map(dbFk => dbFk["COLUMN_NAME"]),
+                    referencedTableName: dbForeignKey["REFERENCED_TABLE_NAME"],
+                    referencedColumnNames: foreignKeys.map(dbFk => dbFk["REFERENCED_COLUMN_NAME"]),
+                    onDelete: dbForeignKey["DELETE_RULE"],
+                    onUpdate: dbForeignKey["UPDATE_RULE"]
+                });
+            });
 
             // create TableIndex objects from the loaded indices
             table.indices = dbIndexes
