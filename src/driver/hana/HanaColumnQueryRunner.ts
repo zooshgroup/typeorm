@@ -668,7 +668,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      * Note: this operation uses SQL's TRUNCATE query which cannot be reverted in transactions.
      */
     async clearTable(tableOrName: Table | string): Promise<void> {
-        throw new OperationNotSupportedError();
+        await this.query(`TRUNCATE TABLE ${this.escapePath(tableOrName)}`);
     }
 
     /**
@@ -917,8 +917,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      * Builds drop table sql
      */
     protected dropTableSql(tableOrName: Table | string): Query {
-        const tableName = tableOrName instanceof Table ? tableOrName.name : `\"${tableOrName}\"`;
-        const query = `DROP TABLE ${tableName}`;
+        const query = `DROP TABLE ${this.escapePath(tableOrName)}`;
         return new Query(query);
     }
 
