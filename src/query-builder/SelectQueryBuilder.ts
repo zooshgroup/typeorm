@@ -34,6 +34,7 @@ import {BroadcasterResult} from "../subscriber/BroadcasterResult";
 import {SelectQueryBuilderOption} from "./SelectQueryBuilderOption";
 import {ObjectUtils} from "../util/ObjectUtils";
 import {DriverUtils} from "../driver/DriverUtils";
+import { HanaColumnDriver } from '../driver/hana/HanaColumnDriver';
 
 /**
  * Allows to build complex sql queries in a fashion way and execute those queries.
@@ -1612,7 +1613,7 @@ export class SelectQueryBuilder<Entity> extends QueryBuilder<Entity> implements 
                 } else if (driver instanceof PostgresDriver) {
                     return " FOR SHARE";
 
-                } else if (driver instanceof OracleDriver) {
+                } else if (driver instanceof OracleDriver || driver instanceof HanaColumnDriver) {
                     return " FOR UPDATE";
 
                 } else if (driver instanceof SqlServerDriver) {
@@ -1622,7 +1623,7 @@ export class SelectQueryBuilder<Entity> extends QueryBuilder<Entity> implements 
                     throw new LockNotSupportedOnGivenDriverError();
                 }
             case "pessimistic_write":
-                if (driver instanceof MysqlDriver || driver instanceof PostgresDriver || driver instanceof OracleDriver) {
+                if (driver instanceof MysqlDriver || driver instanceof PostgresDriver || driver instanceof OracleDriver || driver instanceof HanaColumnDriver) {
                     return " FOR UPDATE";
 
                 } else if (driver instanceof SqlServerDriver) {

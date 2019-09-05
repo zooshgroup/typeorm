@@ -25,7 +25,7 @@ import { OrmUtils } from "../../util/OrmUtils";
 
 
 /**
- * Runs queries on a single mysql database connection.
+ * Runs queries on a hana database connection pool.
  */
 export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunner {
 
@@ -41,6 +41,8 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     // -------------------------------------------------------------------------
     // Protected Properties
     // -------------------------------------------------------------------------
+
+    protected databaseConnection: any;
 
     // -------------------------------------------------------------------------
     // Constructor
@@ -62,7 +64,11 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      * Returns obtained database connection.
      */
     connect(): Promise<any> {
-        return Promise.resolve(this.driver.databaseConnection);
+        if (!this.databaseConnection) {
+            this.databaseConnection = this.driver.pool.acquire();
+        }
+
+        return this.databaseConnection;
     }
 
     /**
@@ -70,9 +76,20 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      * We just clear loaded tables and sql in memory, because sqlite do not support multiple connections thus query runners.
      */
     release(): Promise<void> {
-        this.loadedTables = [];
-        this.clearSqlMemory();
-        return Promise.resolve();
+        return new Promise<void>((ok, fail) => {
+            this.isReleased = true;
+            if (this.databaseConnection) {
+                this.databaseConnection
+                    .then((resource: any) => {
+                        resource.rollback();
+                        this.driver.pool.release(resource)
+                        ok();
+                    })
+                    .catch(fail);
+            } else {
+                ok();
+            }
+        });
     }
 
     /**
@@ -82,6 +99,9 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
         if (this.isTransactionActive)
             throw new TransactionAlreadyStartedError();
 
+        if (!this.databaseConnection) {
+            await this.connect();
+        }
 
         this.isTransactionActive = true;
         if (isolationLevel) {
@@ -101,7 +121,9 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
         if (!this.isTransactionActive)
             throw new TransactionNotStartedError();
 
-        this.driver.databaseConnection.commit();
+        const connection = await this.databaseConnection
+        connection.commit();
+
         this.isTransactionActive = false;
     }
 
@@ -113,7 +135,8 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
         if (!this.isTransactionActive)
             throw new TransactionNotStartedError();
 
-        this.driver.databaseConnection.rollback();
+        const connection = await this.databaseConnection;
+        connection.rollback();
         this.isTransactionActive = false;
     }
 
@@ -698,7 +721,6 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     async clearDatabase(database?: string): Promise<void> {
         const currentSchema = await this.getCurrentSchema();
 
-        await this.startTransaction();
         try {
             const dropViewsQuery = `SELECT 'DROP VIEW "' || SCHEMA_NAME || '"."' || VIEW_NAME || '"' AS "query" FROM "VIEWS" WHERE SCHEMA_NAME = '${currentSchema}'`;
             const dropViewQueries: ObjectLiteral[] = await this.query(dropViewsQuery);
@@ -711,9 +733,6 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
             const dropSequencesQuery = `SELECT 'DROP SEQUENCE "' || SCHEMA_NAME || '"."' || SEQUENCE_NAME || '"' AS "query" FROM "SEQUENCES" WHERE SCHEMA_NAME = '${currentSchema}'`;
             const dropSequencesQueries: ObjectLiteral[] = await this.query(dropSequencesQuery);
             await Promise.all(dropSequencesQueries.map(query => this.query(query["query"])));
-
-            await this.commitTransaction();
-
         } catch (error) {
             try { // we throw original error even if rollback thrown an error
                 await this.rollbackTransaction();
