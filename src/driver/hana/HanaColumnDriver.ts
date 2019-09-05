@@ -138,7 +138,7 @@ export class HanaColumnDriver implements Driver {
         migrationTimestamp: "integer",
         cacheId: "integer",
         cacheIdentifier: "nvarchar",
-        cacheTime: "integer",
+        cacheTime: "bigint",
         cacheDuration: "integer",
         cacheQuery: "nvarchar(5000)" as any,
         cacheResult: "clob",
@@ -265,6 +265,7 @@ export class HanaColumnDriver implements Driver {
      * Prepares given value to a value to be persisted, based on its column type and metadata.
      */
     preparePersistentValue(value: any, columnMetadata: ColumnMetadata): any {
+
         if (columnMetadata.transformer)
             value = ApplyValueTransformers.transformTo(columnMetadata.transformer, value);
 
@@ -285,7 +286,7 @@ export class HanaColumnDriver implements Driver {
             || columnMetadata.type === "timestamp"
             || columnMetadata.type === "timestamp with time zone"
             || columnMetadata.type === "timestamp without time zone") {
-            return DateUtils.mixedDateToDate(value);
+            return DateUtils.mixedDateToDate(value).toISOString();
 
         } else if (["json", "jsonb", ...this.spatialTypes].indexOf(columnMetadata.type) >= 0) {
             return JSON.stringify(value);

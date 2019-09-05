@@ -691,7 +691,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      * Note: this operation uses SQL's TRUNCATE query which cannot be reverted in transactions.
      */
     async clearTable(tableOrName: Table | string): Promise<void> {
-        throw new OperationNotSupportedError();
+        await this.query(`TRUNCATE TABLE ${this.escapePath(tableOrName)}`);
     }
 
     /**
@@ -749,12 +749,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
 
         const dbSequences: ObjectLiteral[] = await this.query(sequencesSql);
 
-        return dbSequences.map(dbSequence => {
-            const sequence = new Sequence();
-            sequence.name = dbSequence["SEQUENCE_NAME"];
-
-            return sequence;
-        });
+        return dbSequences.map(dbSequence =>  new Sequence(dbSequence["SEQUENCE_NAME"]));
     }
 
     /**
@@ -796,10 +791,10 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
             // create columns from the loaded columns
             table.columns = dbColumns
                 .filter(dbColumn => {
-                    return dbColumn["TABLE_NAME"] === table.name || dbColumn["TABLE_NAME"] === dbTable["TABLE_NAME"];
+                    return dbColumn["TABLE_NAME"] === dbTable["TABLE_NAME"];
                 })
                 .map(dbColumn => {
-                    const columnConstraints = dbConstraints.filter(dbConstraint => dbConstraint["TABLE_NAME"] === table.name && dbConstraint["COLUMN_NAME"] === dbColumn["COLUMN_NAME"]);
+                    const columnConstraints = dbConstraints.filter(dbConstraint => dbConstraint["TABLE_NAME"] === dbTable["TABLE_NAME"] && dbConstraint["COLUMN_NAME"] === dbColumn["COLUMN_NAME"]);
 
                     const tableColumn = new TableColumn();
                     tableColumn.name = dbColumn["COLUMN_NAME"];
@@ -840,7 +835,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
 
             // find unique constraints of table, group them by constraint name and build TableUnique.
             const tableUniqueConstraints = OrmUtils.uniq(dbConstraints.filter(dbConstraint => {
-                return (dbConstraint["TABLE_NAME"] === table.name || dbConstraint["TABLE_NAME"] === dbTable["TABLE_NAME"]) && dbConstraint["IS_UNIQUE_KEY"] === "TRUE" && dbConstraint["IS_PRIMARY_KEY"] !== "TRUE";
+                return dbConstraint["TABLE_NAME"] === dbTable["TABLE_NAME"] && dbConstraint["IS_UNIQUE_KEY"] === "TRUE" && dbConstraint["IS_PRIMARY_KEY"] !== "TRUE";
             }), dbConstraint => dbConstraint["CONSTRAINT_NAME"]);
 
             table.uniques = tableUniqueConstraints.map(constraint => {
@@ -853,7 +848,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
 
             // find check constraints of table, group them by constraint name and build TableCheck.
             table.checks = dbConstraints
-                .filter(dbConstraint => (dbConstraint["TABLE_NAME"] === table.name || dbConstraint["TABLE_NAME"] === dbTable["TABLE_NAME"]) && dbConstraint["CHECK_CONDITION"] !== null)
+                .filter(dbConstraint => dbConstraint["TABLE_NAME"] === dbTable["TABLE_NAME"] && dbConstraint["CHECK_CONDITION"] !== null)
                 .map(constraint => {
                     return new TableCheck({
                         name: constraint["CONSTRAINT_NAME"],
@@ -864,7 +859,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
 
             // create TableIndex objects from the loaded indices
             table.indices = dbIndexes
-                .filter(dbIndex => (dbIndex["TABLE_NAME"] === table.name || dbIndex["TABLE_NAME"] === dbTable["TABLE_NAME"]) && dbIndex["CONSTRAINT"] !== "PRIMARY KEY")
+                .filter(dbIndex => dbIndex["TABLE_NAME"] === dbTable["TABLE_NAME"] && dbIndex["CONSTRAINT"] !== "PRIMARY KEY")
                 .map(dbIndex => {
                     const tableIndex = new TableIndex({
                         name: dbIndex["INDEX_NAME"],
@@ -941,8 +936,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      * Builds drop table sql
      */
     protected dropTableSql(tableOrName: Table | string): Query {
-        const tableName = tableOrName instanceof Table ? tableOrName.name : `\"${tableOrName}\"`;
-        const query = `DROP TABLE ${tableName}`;
+        const query = `DROP TABLE ${this.escapePath(tableOrName)}`;
         return new Query(query);
     }
 

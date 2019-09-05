@@ -437,8 +437,7 @@ export class RdbmsSchemaBuilder implements SchemaBuilder {
             this.connection.logger.logSchemaBuild(`creating a new sequence: ${sequencePath}`);
 
             // create a new sequence and sync it in the database
-            const sequence = new Sequence();
-            sequence.name = sequencePath;
+            const sequence = new Sequence(sequencePath);
             await this.queryRunner.createSequence(sequence);
 
             this.queryRunner.loadedSequences.push(sequence);
