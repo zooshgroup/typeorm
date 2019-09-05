@@ -730,12 +730,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
 
         const dbSequences: ObjectLiteral[] = await this.query(sequencesSql);
 
-        return dbSequences.map(dbSequence => {
-            const sequence = new Sequence();
-            sequence.name = dbSequence["SEQUENCE_NAME"];
-
-            return sequence;
-        });
+        return dbSequences.map(dbSequence =>  new Sequence(dbSequence["SEQUENCE_NAME"]));
     }
 
     /**
