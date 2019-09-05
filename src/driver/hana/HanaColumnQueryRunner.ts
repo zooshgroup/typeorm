@@ -594,29 +594,48 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Creates a new foreign key.
      */
-    async createForeignKey(tableOrName: Table | string, foreignKey: TableForeignKey): Promise<void> {
-        throw new OperationNotSupportedError();
+    async createForeignKey(tableOrName: Table|string, foreignKey: TableForeignKey): Promise<void> {
+        const table = tableOrName instanceof Table ? tableOrName : await this.getCachedTable(tableOrName);
+
+        // new FK may be passed without name. In this case we generate FK name manually.
+        if (!foreignKey.name)
+            foreignKey.name = this.connection.namingStrategy.foreignKeyName(table.name, foreignKey.columnNames);
+
+        const up = this.createForeignKeySql(table, foreignKey);
+        const down = this.dropForeignKeySql(table, foreignKey);
+        await this.executeQueries(up, down);
+        table.addForeignKey(foreignKey);
     }
 
     /**
      * Creates a new foreign keys.
      */
-    async createForeignKeys(tableOrName: Table | string, foreignKeys: TableForeignKey[]): Promise<void> {
-        return; //throw new OperationNotSupportedError();
+    async createForeignKeys(tableOrName: Table|string, foreignKeys: TableForeignKey[]): Promise<void> {
+        const promises = foreignKeys.map(foreignKey => this.createForeignKey(tableOrName, foreignKey));
+        await Promise.all(promises);
     }
 
     /**
-     * Drops a foreign key.
+     * Drops a foreign key from the table.
      */
-    async dropForeignKey(tableOrName: Table | string, foreignKeyOrName: TableForeignKey | string): Promise<void> {
-        throw new OperationNotSupportedError();
+    async dropForeignKey(tableOrName: Table|string, foreignKeyOrName: TableForeignKey|string): Promise<void> {
+        const table = tableOrName instanceof Table ? tableOrName : await this.getCachedTable(tableOrName);
+        const foreignKey = foreignKeyOrName instanceof TableForeignKey ? foreignKeyOrName : table.foreignKeys.find(fk => fk.name === foreignKeyOrName);
+        if (!foreignKey)
+            throw new Error(`Supplied foreign key was not found in table ${table.name}`);
+
+        const up = this.dropForeignKeySql(table, foreignKey);
+        const down = this.createForeignKeySql(table, foreignKey);
+        await this.executeQueries(up, down);
+        table.removeForeignKey(foreignKey);
     }
 
     /**
      * Drops a foreign keys from the table.
      */
-    async dropForeignKeys(tableOrName: Table | string, foreignKeys: TableForeignKey[]): Promise<void> {
-        throw new OperationNotSupportedError();
+    async dropForeignKeys(tableOrName: Table|string, foreignKeys: TableForeignKey[]): Promise<void> {
+        const promises = foreignKeys.map(foreignKey => this.dropForeignKey(tableOrName, foreignKey));
+        await Promise.all(promises);
     }
 
     /**
@@ -863,7 +882,17 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
         const columnDefinitions = table.columns.map(column => this.buildCreateColumnSql(column)).join(", ");
         let sql = `CREATE COLUMN TABLE ${this.escapePath(table)} (${columnDefinitions}`;
 
-        //  TODO constraints, refrences, etc.
+        table.columns
+            .filter(column => column.isUnique)
+            .forEach(column => {
+                const isUniqueExist = table.uniques.some(unique => unique.columnNames.length === 1 && unique.columnNames[0] === column.name);
+                if (!isUniqueExist)
+                    table.uniques.push(new TableUnique({
+                        name: this.connection.namingStrategy.uniqueConstraintName(table.name, [column.name]),
+                        columnNames: [column.name]
+                    }));
+            });
+
         if (table.uniques.length > 0) {
             const uniquesSql = table.uniques.map(unique => {
                 const uniqueName = unique.name ? unique.name : this.connection.namingStrategy.uniqueConstraintName(table.name, unique.columnNames);
@@ -882,6 +911,29 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
 
             sql += `, ${checksSql}`;
         }
+
+        if (table.foreignKeys.length > 0 && createForeignKeys) {
+            const foreignKeysSql = table.foreignKeys.map(fk => {
+                const columnNames = fk.columnNames.map(columnName => `"${columnName}"`).join(", ");
+                if (!fk.name)
+                    fk.name = this.connection.namingStrategy.foreignKeyName(table.name, fk.columnNames);
+                const referencedColumnNames = fk.referencedColumnNames.map(columnName => `"${columnName}"`).join(", ");
+                let constraint = `CONSTRAINT "${fk.name}" FOREIGN KEY (${columnNames}) REFERENCES ${this.escapePath(fk.referencedTableName)} (${referencedColumnNames})`;
+                if (fk.onDelete && fk.onDelete !== "NO ACTION") // Oracle does not support NO ACTION, but we set NO ACTION by default in EntityMetadata
+                    constraint += ` ON DELETE ${fk.onDelete}`;
+
+                return constraint;
+            }).join(", ");
+
+            sql += `, ${foreignKeysSql}`;
+        }
+
+/*         const primaryColumns = table.columns.filter(column => column.isPrimary);
+        if (primaryColumns.length > 0) {
+            const primaryKeyName = this.connection.namingStrategy.primaryKeyName(table.name, primaryColumns.map(column => column.name));
+            const columnNames = primaryColumns.map(column => `"${column.name}"`).join(", ");
+            sql += `, CONSTRAINT "${primaryKeyName}" PRIMARY KEY (${columnNames})`;
+        } */
 
         sql += `)`;
         return new Query(sql);
@@ -992,14 +1044,23 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      * Builds create foreign key sql.
      */
     protected createForeignKeySql(table: Table, foreignKey: TableForeignKey): Query {
-        throw new OperationNotSupportedError();
+        const columnNames = foreignKey.columnNames.map(column => `"` + column + `"`).join(", ");
+        const referencedColumnNames = foreignKey.referencedColumnNames.map(column => `"` + column + `"`).join(",");
+        let sql = `ALTER TABLE ${this.escapePath(table)} ADD CONSTRAINT "${foreignKey.name}" FOREIGN KEY (${columnNames}) ` +
+            `REFERENCES ${this.escapePath(foreignKey.referencedTableName)} (${referencedColumnNames})`;
+        // Oracle does not support NO ACTION, but we set NO ACTION by default in EntityMetadata
+        if (foreignKey.onDelete && foreignKey.onDelete !== "NO ACTION")
+            sql += ` ON DELETE ${foreignKey.onDelete}`;
+
+        return new Query(sql);
     }
 
     /**
      * Builds drop foreign key sql.
      */
-    protected dropForeignKeySql(table: Table, foreignKeyOrName: TableForeignKey | string): Query {
-        throw new OperationNotSupportedError();
+    protected dropForeignKeySql(table: Table, foreignKeyOrName: TableForeignKey|string): Query {
+        const foreignKeyName = foreignKeyOrName instanceof TableForeignKey ? foreignKeyOrName.name : foreignKeyOrName;
+        return new Query(`ALTER TABLE ${this.escapePath(table)} DROP CONSTRAINT "${foreignKeyName}"`);
     }
 
     protected parseTableName(target: Table | string) {
