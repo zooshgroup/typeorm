@@ -1570,6 +1570,15 @@ export class SelectQueryBuilder<Entity> extends QueryBuilder<Entity> implements 
             if (offset)
                 throw new OffsetWithoutLimitNotSupportedError("MySQL");
 
+        } else if (this.connection.driver instanceof HanaColumnDriver) {
+
+            if (limit && offset)
+                return " LIMIT " + limit + " OFFSET " + offset;
+            if (limit)
+                return " LIMIT " + limit;
+            if (offset)
+                return " LIMIT 4294967295 OFFSET " + offset; // LIMIT <unsigned_integer> [ OFFSET <unsigned_integer> ]
+
         } else if (this.connection.driver instanceof AbstractSqliteDriver) {
 
             if (limit && offset)
