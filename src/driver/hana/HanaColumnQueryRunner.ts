@@ -217,10 +217,8 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      * Checks if table with the given name exist in the database.
      */
     async hasTable(tableOrName: Table | string): Promise<boolean> {
-        const currentSchema = await this.getCurrentSchema();
-
-        const tableName = tableOrName instanceof Table ? tableOrName.name : `\"${tableOrName}\"`;
-        const sql = `SELECT "TABLE_NAME" FROM "TABLES" WHERE "TABLE_NAME" = '${tableName}' AND SCHEMA_NAME = '${currentSchema}'`;
+        const parsedTableName = this.parseTableViewName(tableOrName);
+        const sql = `SELECT "TABLE_NAME" FROM "TABLES" WHERE "TABLE_NAME" = '${parsedTableName.name}' AND SCHEMA_NAME = '${parsedTableName.schema}'`;
         const result = await this.query(sql);
         return result.length ? true : false;
     }
@@ -275,9 +273,6 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
         upQueries.push(this.createTableSql(table, createForeignKeys));
         downQueries.push(this.dropTableSql(table));
 
-        upQueries.push(this.createPrimaryKeySql(table, table.primaryColumns.map(column => column.name)));
-        downQueries.push(this.dropPrimaryKeySql(table));
-
         // if createForeignKeys is true, we must drop created foreign keys in down query.
         // createTable does not need separate method to create foreign keys, because it create fk's in the same query with table creation.
         if (createForeignKeys)
@@ -331,18 +326,33 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
         await this.executeQueries(upQueries, downQueries);
     }
 
-    /**
+   /**
      * Creates a new view.
      */
     async createView(view: View): Promise<void> {
-        throw new OperationNotSupportedError();
+        const upQueries: Query[] = [];
+        const downQueries: Query[] = [];
+        upQueries.push(this.createViewSql(view));
+        upQueries.push(this.insertViewDefinitionSql(view));
+        downQueries.push(this.dropViewSql(view));
+        downQueries.push(this.deleteViewDefinitionSql(view));
+        await this.executeQueries(upQueries, downQueries);
     }
 
     /**
      * Drops the view.
      */
-    async dropView(target: View | string): Promise<void> {
-        throw new OperationNotSupportedError();
+    async dropView(target: View|string): Promise<void> {
+        const viewName = target instanceof View ? target.name : target;
+        const view = await this.getCachedView(viewName);
+
+        const upQueries: Query[] = [];
+        const downQueries: Query[] = [];
+        upQueries.push(this.deleteViewDefinitionSql(view));
+        upQueries.push(this.dropViewSql(view));
+        downQueries.push(this.insertViewDefinitionSql(view));
+        downQueries.push(this.createViewSql(view));
+        await this.executeQueries(upQueries, downQueries);
     }
 
     /**
@@ -755,7 +765,30 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     }
 
     protected async loadViews(viewNames: string[]): Promise<View[]> {
-        return [];
+        const hasTable = await this.hasTable(this.getTypeormMetadataTableName());
+        if (!hasTable)
+            return Promise.resolve([]);
+
+        const currentSchema = await this.getCurrentSchema();
+        const viewsCondition = viewNames.map(viewName => {
+            let [schema, name] = viewName.split(".");
+            if (!name) {
+                name = schema;
+                schema = this.driver.options.schema || currentSchema;
+            }
+            return `("t"."schema" = '${schema}' AND "t"."name" = '${name}')`;
+        }).join(" OR ");
+ 
+        const query = `SELECT "t".* FROM ${this.escapePath(this.getTypeormMetadataTableName())} "t" ` +
+            `INNER JOIN "VIEWS" "v" ON "v"."SCHEMA_NAME" = "t"."schema" AND "v"."VIEW_NAME" = "t"."name" WHERE "t"."type" = 'VIEW' ${viewsCondition ? `AND (${viewsCondition})` : ""}`;
+        const dbViews = await this.query(query);
+        return dbViews.map((dbView: any) => {
+            const view = new View();
+            const schema = dbView["schema"] === currentSchema && !this.driver.options.schema ? undefined : dbView["schema"];
+            view.name = this.driver.buildTableName(dbView["name"], schema);
+            view.expression = dbView["value"];
+            return view;
+        });
     }
 
     protected async loadSequences(sequencePathes: string[]): Promise<Sequence[]> {
@@ -968,12 +1001,12 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
             sql += `, ${foreignKeysSql}`;
         }
 
-/*         const primaryColumns = table.columns.filter(column => column.isPrimary);
+        const primaryColumns = table.columns.filter(column => column.isPrimary);
         if (primaryColumns.length > 0) {
             const primaryKeyName = this.connection.namingStrategy.primaryKeyName(table.name, primaryColumns.map(column => column.name));
             const columnNames = primaryColumns.map(column => `"${column.name}"`).join(", ");
             sql += `, CONSTRAINT "${primaryKeyName}" PRIMARY KEY (${columnNames})`;
-        } */
+        }
 
         sql += `)`;
         return new Query(sql);
@@ -1025,25 +1058,46 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     }
 
     protected createViewSql(view: View): Query {
-        throw new OperationNotSupportedError();
+        if (typeof view.expression === "string") {
+            return new Query(`CREATE VIEW ${this.escapePath(view)} AS ${view.expression}`);
+        } else {
+            return new Query(`CREATE VIEW ${this.escapePath(view)} AS ${view.expression(this.connection).getQuery()}`);
+        }
     }
 
-    protected async insertViewDefinitionSql(view: View): Promise<Query> {
-        throw new OperationNotSupportedError();
+    protected insertViewDefinitionSql(view: View): Query {
+        const parsedViewName = this.parseTableViewName(view);
+        const expression = typeof view.expression === "string" ? view.expression.trim() : view.expression(this.connection).getQuery();
+        const [query, parameters] = this.connection.createQueryBuilder()
+            .insert()
+            .into(this.getTypeormMetadataTableName())
+            .values({ type: "VIEW", schema: parsedViewName.schema, name: parsedViewName.name, value: expression })
+            .getQueryAndParameters();
+
+        return new Query(query, parameters);
     }
 
     /**
      * Builds drop view sql.
      */
-    protected dropViewSql(viewOrPath: View | string): Query {
-        throw new OperationNotSupportedError();
+    protected dropViewSql(viewOrPath: View|string): Query {
+        return new Query(`DROP VIEW ${this.escapePath(viewOrPath)}`);
     }
 
     /**
      * Builds remove view sql.
      */
-    protected async deleteViewDefinitionSql(viewOrPath: View | string): Promise<Query> {
-        throw new OperationNotSupportedError();
+    protected deleteViewDefinitionSql(viewOrPath: View|string): Query {
+        const parsedViewName = this.parseTableViewName(viewOrPath);
+        const qb = this.connection.createQueryBuilder();
+        const [query, parameters] = qb.delete()
+            .from(this.getTypeormMetadataTableName())
+            .where(`${qb.escape("type")} = 'VIEW'`)
+            .andWhere(`${qb.escape("name")} = :name`, { name: parsedViewName.name })
+            .andWhere(`${qb.escape("schema")} = :schema`, { name: parsedViewName.schema })
+            .getQueryAndParameters();
+
+        return new Query(query, parameters);
     }
 
     /**
@@ -1103,8 +1157,22 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
         return new Query(`ALTER TABLE ${this.escapePath(table)} DROP CONSTRAINT "${foreignKeyName}"`);
     }
 
-    protected parseTableName(target: Table | string) {
-        throw new OperationNotSupportedError();
+    /**
+     * Returns object with table schema and table name.
+     */
+    protected parseTableViewName(target: Table|View|string) {
+        const tableName = target instanceof Table || target instanceof View ? target.name : target;
+        if (tableName.indexOf(".") === -1) {
+            return {
+                schema: this.driver.options.schema ? `${this.driver.options.schema}` : `${this.getCurrentSchema()}`,
+                name: `${tableName}`
+            };
+        } else {
+            return {
+                schema: `${tableName.split(".")[0]}`,
+                name: `${tableName.split(".")[1]}`
+            };
+        }
     }
 
     protected async getCurrentSchema(): Promise<string> {
