@@ -147,7 +147,7 @@ export class HanaColumnDriver implements Driver {
         metadataSchema: "nvarchar",
         metadataTable: "nvarchar",
         metadataName: "nvarchar",
-        metadataValue: "clob",
+        metadataValue: "nvarchar(5000)" as any,
     };
 
     /**
