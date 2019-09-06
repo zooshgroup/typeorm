@@ -87,7 +87,7 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
             
             for(let [index, parameter] of parameters.entries()) {
                 if (parameter instanceof SequenceParameter) {
-                    const id = await InsertQueryBuilder.idGenerator.getId(this.obtainQueryRunner(), parameter.sequenceName);
+                    const id = await InsertQueryBuilder.idGenerator.getId(this.obtainQueryRunner(), this.queryRunner === null, parameter.sequenceName);
                     parameters[index] = id;
                     this.expressionMap.nativeParameters[parameter.parameterKey] = id
                 }
