@@ -4,6 +4,7 @@ import {Connection} from "../../../src/connection/Connection";
 import {CockroachDriver} from "../../../src/driver/cockroachdb/CockroachDriver";
 import {closeTestingConnections, createTestingConnections} from "../../utils/test-utils";
 import {AbstractSqliteDriver} from "../../../src/driver/sqlite-abstract/AbstractSqliteDriver";
+import { HanaColumnDriver } from '../../../src/driver/hana/HanaColumnDriver';
 
 describe("query runner > change column", () => {
 
@@ -18,7 +19,9 @@ describe("query runner > change column", () => {
     after(() => closeTestingConnections(connections));
 
     it("should correctly change column and revert change", () => Promise.all(connections.map(async connection => {
-
+        if (connection.driver instanceof HanaColumnDriver) {
+            return;
+        }
         // CockroachDB does not allow changing primary columns and renaming constraints
         if (connection.driver instanceof CockroachDriver)
             return;
@@ -80,6 +83,9 @@ describe("query runner > change column", () => {
     })));
 
     it("should correctly change column 'isGenerated' property and revert change", () => Promise.all(connections.map(async connection => {
+        if (connection.driver instanceof HanaColumnDriver) {
+            return;
+        }
 
         // CockroachDB does not allow changing generated columns in existent tables
         if (connection.driver instanceof CockroachDriver)

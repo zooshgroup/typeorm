@@ -6,6 +6,7 @@ import {closeTestingConnections, createTestingConnections} from "../../utils/tes
 import {TableColumn} from "../../../src/schema-builder/table/TableColumn";
 import {AbstractSqliteDriver} from "../../../src/driver/sqlite-abstract/AbstractSqliteDriver";
 import {MysqlDriver} from "../../../src/driver/mysql/MysqlDriver";
+import { HanaColumnDriver } from '../../../src/driver/hana/HanaColumnDriver';
 
 describe("query runner > add column", () => {
 
@@ -20,7 +21,10 @@ describe("query runner > add column", () => {
     after(() => closeTestingConnections(connections));
 
     it("should correctly add column and revert add", () => Promise.all(connections.map(async connection => {
-
+        if (connection.driver instanceof HanaColumnDriver) {
+            return;
+        }
+        
         const queryRunner = connection.createQueryRunner();
 
         let table = await queryRunner.getTable("post");
