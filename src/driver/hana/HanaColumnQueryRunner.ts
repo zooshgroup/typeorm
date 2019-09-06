@@ -778,7 +778,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
         }).join(" OR ");
  
         const query = `SELECT "t".* FROM ${this.escapePath(this.getTypeormMetadataTableName())} "t" ` +
-            `INNER JOIN "VIEWS" "v" ON  "v"."VIEW_NAME" = "t"."name" `;
+            `INNER JOIN "VIEWS" "v" ON "v"."SCHEMA_NAME" = "t"."schema" AND "v"."VIEW_NAME" = "t"."name" WHERE "t"."type" = 'VIEW' ${viewsCondition ? `AND (${viewsCondition})` : ""}`;
         const dbViews = await this.query(query);
         return dbViews.map((dbView: any) => {
             const view = new View();
