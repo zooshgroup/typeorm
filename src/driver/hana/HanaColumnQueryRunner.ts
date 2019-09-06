@@ -196,21 +196,22 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      * If database parameter specified, returns schemas of that database.
      */
     async getSchemas(database?: string): Promise<string[]> {
-        throw new OperationNotSupportedError();
+        return Promise.resolve([]);
     }
 
     /**
      * Checks if database with the given name exist.
      */
     async hasDatabase(database: string): Promise<boolean> {
-        throw new OperationNotSupportedError();
+        return Promise.resolve(false);
     }
 
     /**
      * Checks if schema with the given name exist.
      */
     async hasSchema(schema: string): Promise<boolean> {
-        throw new OperationNotSupportedError();
+        const result = await this.query(`SELECT * FROM "SCHEMAS" WHERE "SCHEMA_NAME" = '${schema}'`);
+        return result.length ? true : false;
     }
 
     /**
@@ -226,8 +227,11 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Checks if column with the given name exist in the given table.
      */
-    async hasColumn(tableOrName: Table | string, column: TableColumn | string): Promise<boolean> {
-        throw new OperationNotSupportedError();
+    async hasColumn(tableOrName: Table | string, columnName: string): Promise<boolean> {
+        const parsedTableName = this.parseTableViewName(tableOrName);
+        const sql = `SELECT * FROM "TABLE_COLUMNS" WHERE "SCHEMA_NAME" = ${parsedTableName.schema} AND "TABLE_NAME" = ${parsedTableName.name} AND "COLUMN_NAME" = '${columnName}'`;
+        const result = await this.query(sql);
+        return result.length ? true : false;
     }
 
     /**
