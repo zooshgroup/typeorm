@@ -22,6 +22,7 @@ import { OperationNotSupportedError } from '../../error/OperationNotSupportedErr
 import { ObjectLiteral } from '../../common/ObjectLiteral';
 import { ColumnType } from '../types/ColumnTypes';
 import { OrmUtils } from "../../util/OrmUtils";
+import { PromiseUtils } from '../../util/PromiseUtils';
 
 
 /**
@@ -397,15 +398,63 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Creates a new column from the column in the table.
      */
-    async addColumn(tableOrName: Table | string, column: TableColumn): Promise<void> {
-        throw new OperationNotSupportedError();
+    async addColumn(tableOrName: Table|string, column: TableColumn): Promise<void> {
+        const table = tableOrName instanceof Table ? tableOrName : await this.getCachedTable(tableOrName);
+        const clonedTable = table.clone();
+        const upQueries: Query[] = [];
+        const downQueries: Query[] = [];
+
+        upQueries.push(new Query(`ALTER TABLE ${this.escapePath(table.name)} ADD (${this.buildCreateColumnSql(column)})`));
+        downQueries.push(new Query(`ALTER TABLE ${this.escapePath(table.name)} DROP COLUMN "${column.name}"`));
+
+        // create or update primary key constraint
+        if (column.isPrimary) {
+            const primaryColumns = clonedTable.primaryColumns;
+            // if table already have primary key, me must drop it and recreate again
+            if (primaryColumns.length > 0) {
+                const pkName = this.connection.namingStrategy.primaryKeyName(clonedTable.name, primaryColumns.map(column => column.name));
+                const columnNames = primaryColumns.map(column => `"${column.name}"`).join(", ");
+                upQueries.push(new Query(`ALTER TABLE ${this.escapePath(table.name)} DROP CONSTRAINT "${pkName}"`));
+                downQueries.push(new Query(`ALTER TABLE ${this.escapePath(table.name)} ADD CONSTRAINT "${pkName}" PRIMARY KEY (${columnNames})`));
+            }
+
+            primaryColumns.push(column);
+            const pkName = this.connection.namingStrategy.primaryKeyName(clonedTable.name, primaryColumns.map(column => column.name));
+            const columnNames = primaryColumns.map(column => `"${column.name}"`).join(", ");
+            upQueries.push(new Query(`ALTER TABLE ${this.escapePath(table.name)} ADD CONSTRAINT "${pkName}" PRIMARY KEY (${columnNames})`));
+            downQueries.push(new Query(`ALTER TABLE ${this.escapePath(table.name)} DROP CONSTRAINT "${pkName}"`));
+        }
+
+        // create column index
+        const columnIndex = clonedTable.indices.find(index => index.columnNames.length === 1 && index.columnNames[0] === column.name);
+        if (columnIndex) {
+            clonedTable.indices.splice(clonedTable.indices.indexOf(columnIndex), 1);
+            upQueries.push(this.createIndexSql(table, columnIndex));
+            downQueries.push(this.dropIndexSql(columnIndex));
+        }
+
+        // create unique constraint
+        if (column.isUnique) {
+            const uniqueConstraint = new TableUnique({
+                name: this.connection.namingStrategy.uniqueConstraintName(table.name, [column.name]),
+                columnNames: [column.name]
+            });
+            clonedTable.uniques.push(uniqueConstraint);
+            upQueries.push(new Query(`ALTER TABLE ${this.escapePath(table.name)} ADD CONSTRAINT "${uniqueConstraint.name}" UNIQUE ("${column.name}")`));
+            downQueries.push(new Query(`ALTER TABLE ${this.escapePath(table.name)} DROP CONSTRAINT "${uniqueConstraint.name}"`));
+        }
+
+        await this.executeQueries(upQueries, downQueries);
+
+        clonedTable.addColumn(column);
+        this.replaceCachedTable(table, clonedTable);
     }
 
     /**
      * Creates a new columns from the column in the table.
      */
     async addColumns(tableOrName: Table | string, columns: TableColumn[]): Promise<void> {
-        throw new OperationNotSupportedError();
+        await PromiseUtils.runInSequence(columns, column => this.addColumn(tableOrName, column));
     }
 
     /**
