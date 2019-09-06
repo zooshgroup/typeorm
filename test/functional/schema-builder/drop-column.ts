@@ -3,6 +3,7 @@ import {Connection} from "../../../src/connection/Connection";
 import {CockroachDriver} from "../../../src/driver/cockroachdb/CockroachDriver";
 import {closeTestingConnections, createTestingConnections} from "../../utils/test-utils";
 import {expect} from "chai";
+import { HanaColumnDriver } from '../../../src/driver/hana/HanaColumnDriver';
 
 describe("schema builder > drop column", () => {
 
@@ -17,6 +18,9 @@ describe("schema builder > drop column", () => {
     after(() => closeTestingConnections(connections));
 
     it("should correctly drop column", () => Promise.all(connections.map(async connection => {
+        if (connection.driver instanceof HanaColumnDriver) {
+            return;
+        }
 
         const studentMetadata = connection.getMetadata("student");
         const removedColumns = studentMetadata.columns.filter(column => ["name", "faculty"].indexOf(column.propertyName) !== -1);

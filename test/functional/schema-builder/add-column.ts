@@ -5,6 +5,7 @@ import {closeTestingConnections, createTestingConnections} from "../../utils/tes
 import {ColumnMetadata} from "../../../src/metadata/ColumnMetadata";
 import {ColumnMetadataArgs} from "../../../src/metadata-args/ColumnMetadataArgs";
 import {Post} from "./entity/Post";
+import { HanaColumnDriver } from '../../../src/driver/hana/HanaColumnDriver';
 
 describe("schema builder > add column", () => {
 
@@ -19,7 +20,10 @@ describe("schema builder > add column", () => {
     after(() => closeTestingConnections(connections));
 
     it("should correctly add column", () => Promise.all(connections.map(async connection => {
-
+        if (connection.driver instanceof HanaColumnDriver) {
+            return;
+        }
+        
         const postMetadata = connection.getMetadata("post");
 
         const columnMetadata1 = new ColumnMetadata({

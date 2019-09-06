@@ -11,6 +11,7 @@ import {Post} from "./entity/Post";
 import {PostVersion} from "./entity/PostVersion";
 import {MysqlDriver} from "../../../src/driver/mysql/MysqlDriver";
 import {OracleDriver} from "../../../src/driver/oracle/OracleDriver";
+import { HanaColumnDriver } from '../../../src/driver/hana/HanaColumnDriver';
 
 describe("schema builder > change column", () => {
 
@@ -26,6 +27,10 @@ describe("schema builder > change column", () => {
     after(() => closeTestingConnections(connections));
 
     it("should correctly change column name", () => PromiseUtils.runInSequence(connections, async connection => {
+        if (connection.driver instanceof HanaColumnDriver) {
+            return;
+        }
+
         const postMetadata = connection.getMetadata(Post);
         const nameColumn = postMetadata.findColumnWithPropertyName("name")!;
         nameColumn.propertyName = "title";
@@ -46,6 +51,10 @@ describe("schema builder > change column", () => {
     }));
 
     it("should correctly change column length", () => PromiseUtils.runInSequence(connections, async connection => {
+        if (connection.driver instanceof HanaColumnDriver) {
+            return;
+        }
+
         const postMetadata = connection.getMetadata(Post);
         const nameColumn = postMetadata.findColumnWithPropertyName("name")!;
         const textColumn = postMetadata.findColumnWithPropertyName("text")!;
@@ -73,6 +82,9 @@ describe("schema builder > change column", () => {
     }));
 
     it("should correctly change column type", () => PromiseUtils.runInSequence(connections, async connection => {
+        if (connection.driver instanceof HanaColumnDriver) {
+            return;
+        }
 
         const postMetadata = connection.getMetadata(Post);
         const versionColumn = postMetadata.findColumnWithPropertyName("version")!;
@@ -97,6 +109,10 @@ describe("schema builder > change column", () => {
     }));
 
     it("should correctly make column primary and generated", () => PromiseUtils.runInSequence(connections, async connection => {
+        if (connection.driver instanceof HanaColumnDriver) {
+            return;
+        }
+
         // CockroachDB does not allow changing PK
         if (connection.driver instanceof CockroachDriver)
             return;
@@ -132,6 +148,10 @@ describe("schema builder > change column", () => {
     }));
 
     it("should correctly change column `isGenerated` property when column is on foreign key", () => PromiseUtils.runInSequence(connections, async connection => {
+        if (connection.driver instanceof HanaColumnDriver) {
+            return;
+        }
+
         const teacherMetadata = connection.getMetadata("teacher");
         const idColumn = teacherMetadata.findColumnWithPropertyName("id")!;
         idColumn.isGenerated = false;
@@ -153,6 +173,10 @@ describe("schema builder > change column", () => {
     }));
 
     it("should correctly change non-generated column on to uuid-generated column", () => PromiseUtils.runInSequence(connections, async connection => {
+        if (connection.driver instanceof HanaColumnDriver) {
+            return;
+        }
+
         // CockroachDB does not allow changing PK
         if (connection.driver instanceof CockroachDriver)
             return;
@@ -201,6 +225,10 @@ describe("schema builder > change column", () => {
     }));
 
     it("should correctly change generated column generation strategy", () => PromiseUtils.runInSequence(connections, async connection => {
+        if (connection.driver instanceof HanaColumnDriver) {
+            return;
+        }
+
         // CockroachDB does not allow changing PK
         if (connection.driver instanceof CockroachDriver)
             return;

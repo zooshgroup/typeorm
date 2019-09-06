@@ -8,6 +8,7 @@ import {Teacher} from "./entity/Teacher";
 import {Student} from "./entity/Student";
 import {TableIndex} from "../../../src/schema-builder/table/TableIndex";
 import {expect} from "chai";
+import { HanaColumnDriver } from '../../../src/driver/hana/HanaColumnDriver';
 
 describe("schema builder > change index", () => {
 
@@ -23,6 +24,10 @@ describe("schema builder > change index", () => {
     after(() => closeTestingConnections(connections));
 
     it("should correctly add new index", () => PromiseUtils.runInSequence(connections, async connection => {
+        if (connection.driver instanceof HanaColumnDriver) {
+            return;
+        }
+
         const teacherMetadata = connection.getMetadata(Teacher);
         const nameColumn = teacherMetadata.findColumnWithPropertyName("name")!;
         const indexMetadata = new IndexMetadata({
@@ -49,6 +54,10 @@ describe("schema builder > change index", () => {
     }));
 
     it("should correctly change index", () => PromiseUtils.runInSequence(connections, async connection => {
+        if (connection.driver instanceof HanaColumnDriver) {
+            return;
+        }
+        
         const studentMetadata = connection.getMetadata(Student);
         studentMetadata.indices[0].name = "changed_index";
 
@@ -63,6 +72,10 @@ describe("schema builder > change index", () => {
     }));
 
     it("should correctly drop removed index", () => PromiseUtils.runInSequence(connections, async connection => {
+        if (connection.driver instanceof HanaColumnDriver) {
+            return;
+        }
+        
         const studentMetadata = connection.getMetadata(Student);
         studentMetadata.indices.splice(0, 1);
 
@@ -80,7 +93,10 @@ describe("schema builder > change index", () => {
     }));
 
     it("should ignore index synchronization when `synchronize` set to false", () => PromiseUtils.runInSequence(connections, async connection => {
-
+        if (connection.driver instanceof HanaColumnDriver) {
+            return;
+        }
+        
         // You can not disable synchronization for unique index in CockroachDB, because unique indices are stored as UNIQUE constraints
 
         const queryRunner = connection.createQueryRunner();

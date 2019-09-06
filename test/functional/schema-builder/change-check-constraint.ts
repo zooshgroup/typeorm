@@ -6,6 +6,7 @@ import {Teacher} from "./entity/Teacher";
 import {Post} from "./entity/Post";
 import {CheckMetadata} from "../../../src/metadata/CheckMetadata";
 import {MysqlDriver} from "../../../src/driver/mysql/MysqlDriver";
+import { HanaColumnDriver } from '../../../src/driver/hana/HanaColumnDriver';
 
 describe("schema builder > change check constraint", () => {
 
@@ -21,6 +22,10 @@ describe("schema builder > change check constraint", () => {
     after(() => closeTestingConnections(connections));
 
     it("should correctly add new check constraint", () => PromiseUtils.runInSequence(connections, async connection => {
+        if (connection.driver instanceof HanaColumnDriver) {
+            return;
+        }
+        
         // Mysql does not support check constraints.
         if (connection.driver instanceof MysqlDriver)
             return;
@@ -46,6 +51,10 @@ describe("schema builder > change check constraint", () => {
     }));
 
     it("should correctly change check", () => PromiseUtils.runInSequence(connections, async connection => {
+        if (connection.driver instanceof HanaColumnDriver) {
+            return;
+        }
+
         // Mysql does not support check constraints.
         if (connection.driver instanceof MysqlDriver)
             return;
@@ -64,6 +73,10 @@ describe("schema builder > change check constraint", () => {
     }));
 
     it("should correctly drop removed check", () => PromiseUtils.runInSequence(connections, async connection => {
+        if (connection.driver instanceof HanaColumnDriver) {
+            return;
+        }
+
         // Mysql does not support check constraints.
         if (connection.driver instanceof MysqlDriver)
             return;

@@ -4,6 +4,7 @@ import {CockroachDriver} from "../../../src/driver/cockroachdb/CockroachDriver";
 import {UniqueMetadata} from "../../../src/metadata/UniqueMetadata";
 import {closeTestingConnections, createTestingConnections, reloadTestingDatabases} from "../../utils/test-utils";
 import {ForeignKeyMetadata} from "../../../src/metadata/ForeignKeyMetadata";
+import { HanaColumnDriver } from '../../../src/driver/hana/HanaColumnDriver';
 
 describe("schema builder > create foreign key", () => {
 
@@ -19,6 +20,10 @@ describe("schema builder > create foreign key", () => {
     after(() => closeTestingConnections(connections));
 
     it("should correctly create foreign key", () => Promise.all(connections.map(async connection => {
+        if (connection.driver instanceof HanaColumnDriver) {
+            return;
+        }
+
         const categoryMetadata = connection.getMetadata("category");
         const postMetadata = connection.getMetadata("post");
         const columns = categoryMetadata.columns.filter(column => ["postText", "postTag"].indexOf(column.propertyName) !== -1);

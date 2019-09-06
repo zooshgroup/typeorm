@@ -8,6 +8,7 @@ import {MysqlDriver} from "../../../src/driver/mysql/MysqlDriver";
 import {Post} from "./entity/Post";
 import {AbstractSqliteDriver} from "../../../src/driver/sqlite-abstract/AbstractSqliteDriver";
 import {IndexMetadata} from "../../../src/metadata/IndexMetadata";
+import { HanaColumnDriver } from '../../../src/driver/hana/HanaColumnDriver';
 
 describe("schema builder > change unique constraint", () => {
 
@@ -23,6 +24,10 @@ describe("schema builder > change unique constraint", () => {
     after(() => closeTestingConnections(connections));
 
     it("should correctly add new unique constraint", () => PromiseUtils.runInSequence(connections, async connection => {
+        if (connection.driver instanceof HanaColumnDriver) {
+            return;
+        }
+
         const teacherMetadata = connection.getMetadata(Teacher);
         const nameColumn = teacherMetadata.findColumnWithPropertyName("name")!;
         let uniqueIndexMetadata: IndexMetadata|undefined = undefined;
@@ -76,6 +81,10 @@ describe("schema builder > change unique constraint", () => {
     }));
 
     it("should correctly change unique constraint", () => PromiseUtils.runInSequence(connections, async connection => {
+        if (connection.driver instanceof HanaColumnDriver) {
+            return;
+        }
+
         // Sqlite does not store unique constraint name
         if (connection.driver instanceof AbstractSqliteDriver)
             return;
@@ -118,6 +127,10 @@ describe("schema builder > change unique constraint", () => {
     }));
 
     it("should correctly drop removed unique constraint", () => PromiseUtils.runInSequence(connections, async connection => {
+        if (connection.driver instanceof HanaColumnDriver) {
+            return;
+        }
+
         const postMetadata = connection.getMetadata(Post);
 
         // Mysql stores unique constraints as unique indices.
