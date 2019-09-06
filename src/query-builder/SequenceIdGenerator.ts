@@ -6,9 +6,9 @@ export class SequenceIdGenerator {
 
     }
 
-    async getId(queryRunner: QueryRunner, sequenceName: string): Promise<Number>{
+    async getId(queryRunner: QueryRunner, shouldReleaseQueryRunner: boolean, sequenceName: string): Promise<Number>{
         const result = await queryRunner.query("select \""+sequenceName+"\".nextval \"id\" from dummy");
-        if (!queryRunner.isTransactionActive) {
+        if (shouldReleaseQueryRunner) {
             await queryRunner.release();
         }
 

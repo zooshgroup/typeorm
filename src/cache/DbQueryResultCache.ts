@@ -198,7 +198,7 @@ export class DbQueryResultCache implements QueryResultCache {
 
         } else { // otherwise insert
             if (this.connection.driver instanceof HanaColumnDriver) {
-                const seqId = await InsertQueryBuilder.idGenerator.getId(queryRunner, this.queryResultCacheTable);
+                const seqId = await InsertQueryBuilder.idGenerator.getId(queryRunner, false, this.queryResultCacheTable);
                 insertedValues = {
                     id: seqId,
                     identifier: options.identifier,

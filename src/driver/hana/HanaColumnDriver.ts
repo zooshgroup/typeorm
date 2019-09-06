@@ -338,7 +338,7 @@ export class HanaColumnDriver implements Driver {
             || columnMetadata.type === "timestamp"
             || columnMetadata.type === "timestamp with time zone"
             || columnMetadata.type === "timestamp without time zone") {
-            value = DateUtils.normalizeHydratedDate(value);
+            value = DateUtils.normalizeHydratedDate(value + "Z");
 
         } else if (columnMetadata.type === "date") {
             value = DateUtils.mixedDateToDateString(value);
