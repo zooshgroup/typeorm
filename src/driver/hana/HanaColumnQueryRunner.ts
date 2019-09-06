@@ -470,15 +470,47 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Updates composite primary keys.
      */
-    async updatePrimaryKeys(tableOrName: Table | string, columns: TableColumn[]): Promise<void> {
-        return; //throw new OperationNotSupportedError();
+    async updatePrimaryKeys(tableOrName: Table|string, columns: TableColumn[]): Promise<void> {
+        const table = tableOrName instanceof Table ? tableOrName : await this.getCachedTable(tableOrName);
+        const clonedTable = table.clone();
+        const columnNames = columns.map(column => column.name);
+        const upQueries: Query[] = [];
+        const downQueries: Query[] = [];
+
+        // if table already have primary columns, we must drop them.
+        const primaryColumns = clonedTable.primaryColumns;
+        if (primaryColumns.length > 0) {
+            const pkName = this.connection.namingStrategy.primaryKeyName(clonedTable.name, primaryColumns.map(column => column.name));
+            const columnNamesString = primaryColumns.map(column => `"${column.name}"`).join(", ");
+            upQueries.push(new Query(`ALTER TABLE ${this.escapePath(table)} DROP CONSTRAINT "${pkName}"`));
+            downQueries.push(new Query(`ALTER TABLE ${this.escapePath(table)} ADD CONSTRAINT "${pkName}" PRIMARY KEY (${columnNamesString})`));
+        }
+
+        // update columns in table.
+        clonedTable.columns
+            .filter(column => columnNames.indexOf(column.name) !== -1)
+            .forEach(column => column.isPrimary = true);
+
+        const pkName = this.connection.namingStrategy.primaryKeyName(clonedTable.name, columnNames);
+        const columnNamesString = columnNames.map(columnName => `"${columnName}"`).join(", ");
+        upQueries.push(new Query(`ALTER TABLE ${this.escapePath(table)} ADD CONSTRAINT "${pkName}" PRIMARY KEY (${columnNamesString})`));
+        downQueries.push(new Query(`ALTER TABLE ${this.escapePath(table)} DROP CONSTRAINT "${pkName}"`));
+
+        await this.executeQueries(upQueries, downQueries);
+        this.replaceCachedTable(table, clonedTable);
     }
 
     /**
      * Drops a primary key.
      */
-    async dropPrimaryKey(tableOrName: Table | string): Promise<void> {
-        throw new OperationNotSupportedError();
+    async dropPrimaryKey(tableOrName: Table|string): Promise<void> {
+        const table = tableOrName instanceof Table ? tableOrName : await this.getCachedTable(tableOrName);
+        const up = this.dropPrimaryKeySql(table);
+        const down = this.createPrimaryKeySql(table, table.primaryColumns.map(column => column.name));
+        await this.executeQueries(up, down);
+        table.primaryColumns.forEach(column => {
+            column.isPrimary = false;
+        });
     }
 
     /**
@@ -588,14 +620,23 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      * Drops check constraint.
      */
     async dropCheckConstraint(tableOrName: Table | string, checkOrName: TableCheck | string): Promise<void> {
-        throw new OperationNotSupportedError();
+        const table = tableOrName instanceof Table ? tableOrName : await this.getCachedTable(tableOrName);
+        const checkConstraint = checkOrName instanceof TableCheck ? checkOrName : table.checks.find(c => c.name === checkOrName);
+        if (!checkConstraint)
+            throw new Error(`Supplied check constraint was not found in table ${table.name}`);
+
+        const up = this.dropCheckConstraintSql(table, checkConstraint);
+        const down = this.createCheckConstraintSql(table, checkConstraint);
+        await this.executeQueries(up, down);
+        table.removeCheckConstraint(checkConstraint);
     }
 
     /**
      * Drops check constraints.
      */
     async dropCheckConstraints(tableOrName: Table | string, checkConstraints: TableCheck[]): Promise<void> {
-        throw new OperationNotSupportedError();
+        const promises = checkConstraints.map(checkConstraint => this.dropCheckConstraint(tableOrName, checkConstraint));
+        await Promise.all(promises);
     }
 
     /**
