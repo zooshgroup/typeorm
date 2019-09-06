@@ -588,14 +588,23 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      * Drops check constraint.
      */
     async dropCheckConstraint(tableOrName: Table | string, checkOrName: TableCheck | string): Promise<void> {
-        throw new OperationNotSupportedError();
+        const table = tableOrName instanceof Table ? tableOrName : await this.getCachedTable(tableOrName);
+        const checkConstraint = checkOrName instanceof TableCheck ? checkOrName : table.checks.find(c => c.name === checkOrName);
+        if (!checkConstraint)
+            throw new Error(`Supplied check constraint was not found in table ${table.name}`);
+
+        const up = this.dropCheckConstraintSql(table, checkConstraint);
+        const down = this.createCheckConstraintSql(table, checkConstraint);
+        await this.executeQueries(up, down);
+        table.removeCheckConstraint(checkConstraint);
     }
 
     /**
      * Drops check constraints.
      */
     async dropCheckConstraints(tableOrName: Table | string, checkConstraints: TableCheck[]): Promise<void> {
-        throw new OperationNotSupportedError();
+        const promises = checkConstraints.map(checkConstraint => this.dropCheckConstraint(tableOrName, checkConstraint));
+        await Promise.all(promises);
     }
 
     /**
