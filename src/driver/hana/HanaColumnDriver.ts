@@ -208,7 +208,7 @@ export class HanaColumnDriver implements Driver {
                             if (err) {
                                 return fail(err);
                             }
-                            client.setAutoCommit(false);
+                            client.setAutoCommit(true);
                             ok(client);
                         });
                     } catch (err) {
@@ -221,8 +221,9 @@ export class HanaColumnDriver implements Driver {
             }
         };
         const opts = {
-            max: 10, // maximum size of the pool
-            min: 2 // minimum size of the pool
+            max: this.options.pool && this.options.pool.max ? this.options.pool.max : 2,
+            min: this.options.pool && this.options.pool.min ? this.options.pool.min : 1,
+            autostart: this.options.pool && this.options.pool.autostart ? this.options.pool.autostart : false
         };
 
         this.pool = this.genericPool.createPool(factory, opts);

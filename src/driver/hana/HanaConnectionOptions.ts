@@ -36,4 +36,27 @@ export interface HanaConnectionOptions extends BaseConnectionOptions, HanaConnec
      */
     readonly database?: string;
 
+    /**
+     * An optional object/dictionary with the any of the properties
+     */
+    readonly pool?: {
+
+        /**
+         * Maximum number of resources to create at any given time. (default=10)
+         */
+        readonly max?: number;
+
+        /**
+         * Minimum number of resources to keep in pool at any given time. If this is set >= max, the pool will silently
+         * set the min to equal max. (default=2)
+         */
+        readonly min?: number;
+
+        /**
+         * Should the pool start creating resources etc once the constructor is called, (default false)
+         */
+        readonly autostart?: number;
+
+    };
+
 }

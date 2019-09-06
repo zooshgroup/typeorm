@@ -82,6 +82,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
                 this.databaseConnection
                     .then((resource: any) => {
                         resource.rollback();
+                        resource.setAutoCommit(true);
                         this.driver.pool.release(resource)
                         ok();
                     })
@@ -99,9 +100,8 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
         if (this.isTransactionActive)
             throw new TransactionAlreadyStartedError();
 
-        if (!this.databaseConnection) {
-            await this.connect();
-        }
+        let connection = await this.connect();
+        connection.setAutoCommit(false);
 
         this.isTransactionActive = true;
         if (isolationLevel) {
@@ -123,6 +123,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
 
         const connection = await this.databaseConnection
         connection.commit();
+        connection.setAutoCommit(true);
 
         this.isTransactionActive = false;
     }
@@ -137,6 +138,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
 
         const connection = await this.databaseConnection;
         connection.rollback();
+        connection.setAutoCommit(true);
         this.isTransactionActive = false;
     }
 
