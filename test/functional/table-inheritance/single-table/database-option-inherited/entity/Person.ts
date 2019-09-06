@@ -1,4 +1,7 @@
-import {Column, Entity, PrimaryGeneratedColumn, TableInheritance} from "../../../../../../src";
+import {TableInheritance} from '../../../../../../src/decorator/entity/TableInheritance';
+import {Entity} from '../../../../../../src/decorator/entity/Entity';
+import {PrimaryGeneratedColumn} from '../../../../../../src/decorator/columns/PrimaryGeneratedColumn';
+import {Column} from '../../../../../../src/decorator/columns/Column';
 
 @Entity({database: "test"})
 @TableInheritance({column: {name: "type", type: "varchar"}})
