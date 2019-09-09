@@ -196,12 +196,14 @@ export class HanaColumnDriver implements Driver {
                 return new Promise((ok, fail) => {
                     try {
                         const client = this.hanaClient.createConnection();
-                        const params = {
+                        const params: any = {
                             UID: this.options.username,
                             PWD: this.options.password,
                             HOST: this.options.host,
-                            PORT: this.options.port,
-                            CURRENTSCHEMA: this.options.schema
+                            PORT: this.options.port
+                        }
+                        if (this.options.schema) {
+                            params.CURRENTSCHEMA = this.options.schema;
                         }
 
                         client.connect(params, (err: any) => {
