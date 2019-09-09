@@ -21,10 +21,6 @@ describe("query runner > add column", () => {
     after(() => closeTestingConnections(connections));
 
     it("should correctly add column and revert add", () => Promise.all(connections.map(async connection => {
-        if (connection.driver instanceof HanaColumnDriver) {
-            return;
-        }
-        
         const queryRunner = connection.createQueryRunner();
 
         let table = await queryRunner.getTable("post");
@@ -49,7 +45,7 @@ describe("query runner > add column", () => {
             name: "description",
             type: "varchar",
             length: "100",
-            default: "'this is description'"
+            default: connection.driver instanceof HanaColumnDriver ? "'''this is description'''" : "'this is description'"
         });
 
         await queryRunner.addColumn(table!, column1);
@@ -66,7 +62,7 @@ describe("query runner > add column", () => {
             column1!.isPrimary.should.be.true;
 
         // MySql and Sqlite does not supports autoincrement composite primary keys.
-        if (!(connection.driver instanceof MysqlDriver) && !(connection.driver instanceof AbstractSqliteDriver) && !(connection.driver instanceof CockroachDriver)) {
+        if (!(connection.driver instanceof MysqlDriver) && !(connection.driver instanceof AbstractSqliteDriver) && !(connection.driver instanceof CockroachDriver) && !(connection.driver instanceof HanaColumnDriver)) {
             column1!.isGenerated.should.be.true;
             column1!.generationStrategy!.should.be.equal("increment");
         }
