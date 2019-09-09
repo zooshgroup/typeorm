@@ -331,9 +331,9 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
         await this.executeQueries(upQueries, downQueries);
     }
 
-   /**
-     * Creates a new view.
-     */
+    /**
+      * Creates a new view.
+      */
     async createView(view: View): Promise<void> {
         const upQueries: Query[] = [];
         const downQueries: Query[] = [];
@@ -347,7 +347,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Drops the view.
      */
-    async dropView(target: View|string): Promise<void> {
+    async dropView(target: View | string): Promise<void> {
         const viewName = target instanceof View ? target.name : target;
         const view = await this.getCachedView(viewName);
 
@@ -398,7 +398,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Creates a new column from the column in the table.
      */
-    async addColumn(tableOrName: Table|string, column: TableColumn): Promise<void> {
+    async addColumn(tableOrName: Table | string, column: TableColumn): Promise<void> {
         const table = tableOrName instanceof Table ? tableOrName : await this.getCachedTable(tableOrName);
         const clonedTable = table.clone();
         const upQueries: Query[] = [];
@@ -502,7 +502,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Drops column in the table.
      */
-    async dropColumn(tableOrName: Table|string, columnOrName: TableColumn|string): Promise<void> {
+    async dropColumn(tableOrName: Table | string, columnOrName: TableColumn | string): Promise<void> {
         const table = tableOrName instanceof Table ? tableOrName : await this.getCachedTable(tableOrName);
         const column = columnOrName instanceof TableColumn ? columnOrName : table.findColumnByName(columnOrName);
         if (!column)
@@ -568,7 +568,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Drops the columns in the table.
      */
-    async dropColumns(tableOrName: Table|string, columns: TableColumn[]): Promise<void> {
+    async dropColumns(tableOrName: Table | string, columns: TableColumn[]): Promise<void> {
         await PromiseUtils.runInSequence(columns, column => this.dropColumn(tableOrName, column));
     }
 
@@ -595,7 +595,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Updates composite primary keys.
      */
-    async updatePrimaryKeys(tableOrName: Table|string, columns: TableColumn[]): Promise<void> {
+    async updatePrimaryKeys(tableOrName: Table | string, columns: TableColumn[]): Promise<void> {
         const table = tableOrName instanceof Table ? tableOrName : await this.getCachedTable(tableOrName);
         const clonedTable = table.clone();
         const columnNames = columns.map(column => column.name);
@@ -628,7 +628,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Drops a primary key.
      */
-    async dropPrimaryKey(tableOrName: Table|string): Promise<void> {
+    async dropPrimaryKey(tableOrName: Table | string): Promise<void> {
         const table = tableOrName instanceof Table ? tableOrName : await this.getCachedTable(tableOrName);
         const up = this.dropPrimaryKeySql(table);
         const down = this.createPrimaryKeySql(table, table.primaryColumns.map(column => column.name));
@@ -795,7 +795,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Creates a new foreign key.
      */
-    async createForeignKey(tableOrName: Table|string, foreignKey: TableForeignKey): Promise<void> {
+    async createForeignKey(tableOrName: Table | string, foreignKey: TableForeignKey): Promise<void> {
         const table = tableOrName instanceof Table ? tableOrName : await this.getCachedTable(tableOrName);
 
         // new FK may be passed without name. In this case we generate FK name manually.
@@ -811,7 +811,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Creates a new foreign keys.
      */
-    async createForeignKeys(tableOrName: Table|string, foreignKeys: TableForeignKey[]): Promise<void> {
+    async createForeignKeys(tableOrName: Table | string, foreignKeys: TableForeignKey[]): Promise<void> {
         const promises = foreignKeys.map(foreignKey => this.createForeignKey(tableOrName, foreignKey));
         await Promise.all(promises);
     }
@@ -819,7 +819,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Drops a foreign key from the table.
      */
-    async dropForeignKey(tableOrName: Table|string, foreignKeyOrName: TableForeignKey|string): Promise<void> {
+    async dropForeignKey(tableOrName: Table | string, foreignKeyOrName: TableForeignKey | string): Promise<void> {
         const table = tableOrName instanceof Table ? tableOrName : await this.getCachedTable(tableOrName);
         const foreignKey = foreignKeyOrName instanceof TableForeignKey ? foreignKeyOrName : table.foreignKeys.find(fk => fk.name === foreignKeyOrName);
         if (!foreignKey)
@@ -834,7 +834,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Drops a foreign keys from the table.
      */
-    async dropForeignKeys(tableOrName: Table|string, foreignKeys: TableForeignKey[]): Promise<void> {
+    async dropForeignKeys(tableOrName: Table | string, foreignKeys: TableForeignKey[]): Promise<void> {
         const promises = foreignKeys.map(foreignKey => this.dropForeignKey(tableOrName, foreignKey));
         await Promise.all(promises);
     }
@@ -944,7 +944,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
             }
             return `("t"."schema" = '${schema}' AND "t"."name" = '${name}')`;
         }).join(" OR ");
- 
+
         const query = `SELECT "t".* FROM ${this.escapePath(this.getTypeormMetadataTableName())} "t" ` +
             `INNER JOIN "VIEWS" "v" ON "v"."SCHEMA_NAME" = "t"."schema" AND "v"."VIEW_NAME" = "t"."name" WHERE "t"."type" = 'VIEW' ${viewsCondition ? `AND (${viewsCondition})` : ""}`;
         const dbViews = await this.query(query);
@@ -969,7 +969,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
 
         const dbSequences: ObjectLiteral[] = await this.query(sequencesSql);
 
-        return dbSequences.map(dbSequence =>  new Sequence(dbSequence["SEQUENCE_NAME"]));
+        return dbSequences.map(dbSequence => new Sequence(dbSequence["SEQUENCE_NAME"]));
     }
 
     /**
@@ -1060,8 +1060,8 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
             // find unique constraints of table, group them by constraint name and build TableUnique.
             const tableUniqueConstraints = OrmUtils.uniq(dbConstraints.filter(dbConstraint => {
                 return dbConstraint["TABLE_NAME"] === dbTable["TABLE_NAME"] && dbConstraint["IS_UNIQUE_KEY"] === "TRUE"
-                && dbConstraint["IS_PRIMARY_KEY"] !== "TRUE"
-                && dbConstraint["CONSTRAINT_NAME"].startsWith("UQ_"); // HANA issue: how an unique qulumn can be differentiated from unique index?
+                    && dbConstraint["IS_PRIMARY_KEY"] !== "TRUE"
+                    && dbConstraint["CONSTRAINT_NAME"].startsWith("UQ_"); // HANA issue: how an unique qulumn can be differentiated from unique index?
             }), dbConstraint => dbConstraint["CONSTRAINT_NAME"]);
 
             table.uniques = tableUniqueConstraints.map(constraint => {
@@ -1084,7 +1084,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
                 });
 
             // find foreign key constraints of table, group them by constraint name and build TableForeignKey.
-             const tableForeignKeyConstraints = OrmUtils.uniq(dbForeignKeys.filter(dbForeignKey => {
+            const tableForeignKeyConstraints = OrmUtils.uniq(dbForeignKeys.filter(dbForeignKey => {
                 return dbForeignKey["TABLE_NAME"] === dbTable["TABLE_NAME"];
             }), dbForeignKey => dbForeignKey["CONSTRAINT_NAME"]);
 
@@ -1102,7 +1102,8 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
 
             // create TableIndex objects from the loaded indices
             table.indices = dbIndexes
-                .filter(dbIndex => dbIndex["TABLE_NAME"] === dbTable["TABLE_NAME"] && dbIndex["CONSTRAINT"] !== "PRIMARY KEY")
+                .filter(dbIndex => dbIndex["TABLE_NAME"] === dbTable["TABLE_NAME"] && dbIndex["CONSTRAINT"] !== "PRIMARY KEY"
+                    && dbIndex["INDEX_NAME"].startsWith("IDX_")) // HANA issue: how an index can be differentiated from an unique?
                 .map(dbIndex => {
                     const tableIndex = new TableIndex({
                         name: dbIndex["INDEX_NAME"],
@@ -1250,14 +1251,14 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Builds drop view sql.
      */
-    protected dropViewSql(viewOrPath: View|string): Query {
+    protected dropViewSql(viewOrPath: View | string): Query {
         return new Query(`DROP VIEW ${this.escapePath(viewOrPath)}`);
     }
 
     /**
      * Builds remove view sql.
      */
-    protected async deleteViewDefinitionSql(viewOrPath: View|string): Promise<Query> {
+    protected async deleteViewDefinitionSql(viewOrPath: View | string): Promise<Query> {
         const parsedViewName = await this.parseTableViewName(viewOrPath);
         const qb = this.connection.createQueryBuilder();
         const [query, parameters] = qb.delete()
@@ -1322,7 +1323,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Builds drop foreign key sql.
      */
-    protected dropForeignKeySql(table: Table, foreignKeyOrName: TableForeignKey|string): Query {
+    protected dropForeignKeySql(table: Table, foreignKeyOrName: TableForeignKey | string): Query {
         const foreignKeyName = foreignKeyOrName instanceof TableForeignKey ? foreignKeyOrName.name : foreignKeyOrName;
         return new Query(`ALTER TABLE ${this.escapePath(table)} DROP CONSTRAINT "${foreignKeyName}"`);
     }
@@ -1330,7 +1331,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Returns object with table schema and table name.
      */
-    protected async parseTableViewName(target: Table|View|string) {
+    protected async parseTableViewName(target: Table | View | string) {
         const tableName = target instanceof Table || target instanceof View ? target.name : target;
         if (tableName.indexOf(".") === -1) {
             return {
