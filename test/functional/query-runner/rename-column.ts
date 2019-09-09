@@ -8,6 +8,7 @@ import {SqlServerDriver} from "../../../src/driver/sqlserver/SqlServerDriver";
 import {PostgresDriver} from "../../../src/driver/postgres/PostgresDriver";
 import {AbstractSqliteDriver} from "../../../src/driver/sqlite-abstract/AbstractSqliteDriver";
 import {MysqlDriver} from "../../../src/driver/mysql/MysqlDriver";
+import { HanaColumnDriver } from '../../../src/driver/hana/HanaColumnDriver';
 
 describe("query runner > rename column", () => {
 
@@ -22,6 +23,9 @@ describe("query runner > rename column", () => {
     after(() => closeTestingConnections(connections));
 
     it("should correctly rename column and revert rename", () => Promise.all(connections.map(async connection => {
+        if (connection.driver instanceof HanaColumnDriver) {
+            return;
+        }
 
         // TODO: https://github.com/cockroachdb/cockroach/issues/32555
         if (connection.driver instanceof CockroachDriver)
@@ -56,6 +60,9 @@ describe("query runner > rename column", () => {
     })));
 
     it("should correctly rename column with all constraints and revert rename", () => Promise.all(connections.map(async connection => {
+        if (connection.driver instanceof HanaColumnDriver) {
+            return;
+        }
 
         // TODO: https://github.com/cockroachdb/cockroach/issues/32555
         if (connection.driver instanceof CockroachDriver)
@@ -104,6 +111,9 @@ describe("query runner > rename column", () => {
     })));
 
     it("should correctly rename column with all constraints in custom table schema and database and revert rename", () => Promise.all(connections.map(async connection => {
+        if (connection.driver instanceof HanaColumnDriver) {
+            return;
+        }
 
         // TODO: https://github.com/cockroachdb/cockroach/issues/32555
         if (connection.driver instanceof CockroachDriver)

@@ -7,6 +7,7 @@ import {Table} from "../../../src/schema-builder/table/Table";
 import {AbstractSqliteDriver} from "../../../src/driver/sqlite-abstract/AbstractSqliteDriver";
 import {PostgresDriver} from "../../../src/driver/postgres/PostgresDriver";
 import {MysqlDriver} from "../../../src/driver/mysql/MysqlDriver";
+import { HanaColumnDriver } from '../../../src/driver/hana/HanaColumnDriver';
 
 describe("query runner > rename table", () => {
 
@@ -22,6 +23,9 @@ describe("query runner > rename table", () => {
     after(() => closeTestingConnections(connections));
 
     it("should correctly rename table and revert rename", () => Promise.all(connections.map(async connection => {
+        if (connection.driver instanceof HanaColumnDriver) {
+            return;
+        }
 
         // CockroachDB does not support renaming constraints and removing PK.
         if (connection.driver instanceof CockroachDriver)
@@ -48,6 +52,9 @@ describe("query runner > rename table", () => {
     })));
 
     it("should correctly rename table with all constraints depend to that table and revert rename", () => Promise.all(connections.map(async connection => {
+        if (connection.driver instanceof HanaColumnDriver) {
+            return;
+        }
 
         // CockroachDB does not support renaming constraints and removing PK.
         if (connection.driver instanceof CockroachDriver)
@@ -82,6 +89,9 @@ describe("query runner > rename table", () => {
     })));
 
     it("should correctly rename table with custom schema and database and all its dependencies and revert rename", () => Promise.all(connections.map(async connection => {
+        if (connection.driver instanceof HanaColumnDriver) {
+            return;
+        }
 
         // CockroachDB does not support renaming constraints and removing PK.
         if (connection.driver instanceof CockroachDriver)

@@ -10,6 +10,7 @@ import {MysqlDriver} from "../../../src/driver/mysql/MysqlDriver";
 import {AbstractSqliteDriver} from "../../../src/driver/sqlite-abstract/AbstractSqliteDriver";
 import {OracleDriver} from "../../../src/driver/oracle/OracleDriver";
 import {Photo} from "./entity/Photo";
+import { HanaColumnDriver } from '../../../src/driver/hana/HanaColumnDriver';
 
 describe("query runner > create table", () => {
 
@@ -23,6 +24,9 @@ describe("query runner > create table", () => {
     after(() => closeTestingConnections(connections));
 
     it("should correctly create table from simple object and revert creation", () => Promise.all(connections.map(async connection => {
+        if (connection.driver instanceof HanaColumnDriver) {
+            return;
+        }
 
         const queryRunner = connection.createQueryRunner();
         const options: TableOptions = {
