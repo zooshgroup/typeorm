@@ -1,5 +1,6 @@
 import {FindOperatorType} from "./FindOperatorType";
 import {Connection} from "../";
+import { HanaColumnDriver } from '../driver/hana/HanaColumnDriver';
 
 /**
  * Find Operator used in Find Conditions.
@@ -107,6 +108,9 @@ export class FindOperator<T> {
             case "between":
                 return `${aliasPath} BETWEEN ${parameters[0]} AND ${parameters[1]}`;
             case "in":
+                if (connection.driver instanceof HanaColumnDriver) { // hack approved by LACI
+                    return `${aliasPath} = ANY(${parameters.join(", ")})`;
+                }
                 return `${aliasPath} IN (${parameters.join(", ")})`;
             case "any":
                 return `${aliasPath} = ANY(${parameters[0]})`;
