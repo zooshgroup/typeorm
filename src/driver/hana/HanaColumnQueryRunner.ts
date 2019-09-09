@@ -219,7 +219,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      * Checks if table with the given name exist in the database.
      */
     async hasTable(tableOrName: Table | string): Promise<boolean> {
-        const parsedTableName = this.parseTableViewName(tableOrName);
+        const parsedTableName = await this.parseTableViewName(tableOrName);
         const sql = `SELECT "TABLE_NAME" FROM "TABLES" WHERE "TABLE_NAME" = '${parsedTableName.name}' AND SCHEMA_NAME = '${parsedTableName.schema}'`;
         const result = await this.query(sql);
         return result.length ? true : false;
@@ -229,7 +229,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      * Checks if column with the given name exist in the given table.
      */
     async hasColumn(tableOrName: Table | string, columnName: string): Promise<boolean> {
-        const parsedTableName = this.parseTableViewName(tableOrName);
+        const parsedTableName = await this.parseTableViewName(tableOrName);
         const sql = `SELECT * FROM "TABLE_COLUMNS" WHERE "SCHEMA_NAME" = ${parsedTableName.schema} AND "TABLE_NAME" = ${parsedTableName.name} AND "COLUMN_NAME" = '${columnName}'`;
         const result = await this.query(sql);
         return result.length ? true : false;
@@ -338,9 +338,9 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
         const upQueries: Query[] = [];
         const downQueries: Query[] = [];
         upQueries.push(this.createViewSql(view));
-        upQueries.push(this.insertViewDefinitionSql(view));
+        upQueries.push(await this.insertViewDefinitionSql(view));
         downQueries.push(this.dropViewSql(view));
-        downQueries.push(this.deleteViewDefinitionSql(view));
+        downQueries.push(await this.deleteViewDefinitionSql(view));
         await this.executeQueries(upQueries, downQueries);
     }
 
@@ -353,9 +353,9 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
 
         const upQueries: Query[] = [];
         const downQueries: Query[] = [];
-        upQueries.push(this.deleteViewDefinitionSql(view));
+        upQueries.push(await this.deleteViewDefinitionSql(view));
         upQueries.push(this.dropViewSql(view));
-        downQueries.push(this.insertViewDefinitionSql(view));
+        downQueries.push(await this.insertViewDefinitionSql(view));
         downQueries.push(this.createViewSql(view));
         await this.executeQueries(upQueries, downQueries);
     }
@@ -1231,8 +1231,8 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
         }
     }
 
-    protected insertViewDefinitionSql(view: View): Query {
-        const parsedViewName = this.parseTableViewName(view);
+    protected async insertViewDefinitionSql(view: View): Promise<Query> {
+        const parsedViewName = await this.parseTableViewName(view);
         const expression = typeof view.expression === "string" ? view.expression.trim() : view.expression(this.connection).getQuery();
         const [query, parameters] = this.connection.createQueryBuilder()
             .insert()
@@ -1253,8 +1253,8 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Builds remove view sql.
      */
-    protected deleteViewDefinitionSql(viewOrPath: View|string): Query {
-        const parsedViewName = this.parseTableViewName(viewOrPath);
+    protected async deleteViewDefinitionSql(viewOrPath: View|string): Promise<Query> {
+        const parsedViewName = await this.parseTableViewName(viewOrPath);
         const qb = this.connection.createQueryBuilder();
         const [query, parameters] = qb.delete()
             .from(this.getTypeormMetadataTableName())
@@ -1326,11 +1326,11 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Returns object with table schema and table name.
      */
-    protected parseTableViewName(target: Table|View|string) {
+    protected async parseTableViewName(target: Table|View|string) {
         const tableName = target instanceof Table || target instanceof View ? target.name : target;
         if (tableName.indexOf(".") === -1) {
             return {
-                schema: this.driver.options.schema ? `${this.driver.options.schema}` : `${this.getCurrentSchema()}`,
+                schema: this.driver.options.schema ? `${this.driver.options.schema}` : `${await this.getCurrentSchema()}`,
                 name: `${tableName}`
             };
         } else {
