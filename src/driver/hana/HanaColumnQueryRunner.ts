@@ -1008,7 +1008,9 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
         // create tables for loaded tables
         return dbTables.map(dbTable => {
             const table = new Table();
-            table.name = this.driver.buildTableName(dbTable["TABLE_NAME"], currentSchema);
+
+            const schema = dbTable["SCHEMA_NAME"] === currentSchema && !this.driver.options.schema ? undefined : dbTable["SCHEMA_NAME"];
+            table.name = this.driver.buildTableName(dbTable["TABLE_NAME"], schema);
 
             // create columns from the loaded columns
             table.columns = dbColumns
@@ -1057,7 +1059,9 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
 
             // find unique constraints of table, group them by constraint name and build TableUnique.
             const tableUniqueConstraints = OrmUtils.uniq(dbConstraints.filter(dbConstraint => {
-                return dbConstraint["TABLE_NAME"] === dbTable["TABLE_NAME"] && dbConstraint["IS_UNIQUE_KEY"] === "TRUE" && dbConstraint["IS_PRIMARY_KEY"] !== "TRUE";
+                return dbConstraint["TABLE_NAME"] === dbTable["TABLE_NAME"] && dbConstraint["IS_UNIQUE_KEY"] === "TRUE"
+                && dbConstraint["IS_PRIMARY_KEY"] !== "TRUE"
+                && dbConstraint["CONSTRAINT_NAME"].startsWith("UQ_"); // HANA issue: how an unique qulumn can be differentiated from unique index?
             }), dbConstraint => dbConstraint["CONSTRAINT_NAME"]);
 
             table.uniques = tableUniqueConstraints.map(constraint => {
