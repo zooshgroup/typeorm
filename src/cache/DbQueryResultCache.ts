@@ -64,7 +64,7 @@ export class DbQueryResultCache implements QueryResultCache {
             return;
 
         if(queryRunner.connection.driver instanceof HanaColumnDriver) {
-            queryRunner.createSequence(new Sequence(this.queryResultCacheTable));
+            queryRunner.createSequence(new Sequence(this.getCacheTableSequenceName()));
         }
 
         await queryRunner.createTable(new Table(
@@ -77,7 +77,7 @@ export class DbQueryResultCache implements QueryResultCache {
                         isNullable: false,
                         type: driver.normalizeType({type: driver.mappedDataTypes.cacheId}),
                         generationStrategy: queryRunner.connection.driver instanceof HanaColumnDriver ? "sequence" : "increment",
-                        sequenceName: queryRunner.connection.driver instanceof HanaColumnDriver ? this.queryResultCacheTable : undefined,
+                        sequenceName: queryRunner.connection.driver instanceof HanaColumnDriver ? this.getCacheTableSequenceName() : undefined,
                         isGenerated: true
                     },
                     {
@@ -198,7 +198,7 @@ export class DbQueryResultCache implements QueryResultCache {
 
         } else { // otherwise insert
             if (this.connection.driver instanceof HanaColumnDriver) {
-                const seqId = await InsertQueryBuilder.idGenerator.getId(queryRunner, false, this.queryResultCacheTable);
+                const seqId = await InsertQueryBuilder.idGenerator.getId(queryRunner, false, this.getCacheTableSequenceName());
                 insertedValues = {
                     id: seqId,
                     identifier: options.identifier,
@@ -216,6 +216,10 @@ export class DbQueryResultCache implements QueryResultCache {
                 .values(insertedValues)
                 .execute();
         }
+    }
+
+    protected getCacheTableSequenceName(): string {
+        return "SEQ_" + this.queryResultCacheTable;
     }
 
     /**
