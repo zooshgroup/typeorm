@@ -3,6 +3,7 @@ import {createTestingConnections, closeTestingConnections, reloadTestingDatabase
 import {Connection} from "../../../src";
 import {Simple} from "./entity/Simple";
 import {Complex} from "./entity/Complex";
+import { HanaColumnDriver } from '../../../src/driver/hana/HanaColumnDriver';
 
 describe("github issues > #2103 query builder regression", () => {
 
@@ -31,7 +32,7 @@ describe("github issues > #2103 query builder regression", () => {
 
         const entities = await repository.createQueryBuilder("s")
             .whereInIds(ids)
-            .andWhere("x = 1")
+            .andWhere(connection.driver instanceof HanaColumnDriver ? '"s"."x" = 1' : "x = 1")
             .getMany();
 
         entities.map(entity => entity.id).should.be.eql(
@@ -60,7 +61,7 @@ describe("github issues > #2103 query builder regression", () => {
             .whereInIds(ids.map(id => {
                 return { id, code: 1 };
             }))
-            .andWhere("x = 1")
+            .andWhere(connection.driver instanceof HanaColumnDriver ? '"s"."x" = 1' : "x = 1")
             .getMany();
 
         entities.map(entity => entity.id).should.be.eql(
