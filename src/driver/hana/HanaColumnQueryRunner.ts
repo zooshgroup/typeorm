@@ -182,7 +182,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      * Returns raw data stream.
      */
     stream(query: string, parameters?: any[], onEnd?: Function, onError?: Function): Promise<ReadStream> {
-        throw new OperationNotSupportedError();
+        throw new OperationNotSupportedError("stream()");
     }
 
     /**
@@ -239,28 +239,28 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      * Creates a new database.
      */
     async createDatabase(database: string, ifNotExist?: boolean): Promise<void> {
-        throw new OperationNotSupportedError();
+        throw new OperationNotSupportedError("createDatabase()");
     }
 
     /**
      * Drops database.
      */
     async dropDatabase(database: string, ifExist?: boolean): Promise<void> {
-        throw new OperationNotSupportedError();
+        throw new OperationNotSupportedError("dropDatabase()");
     }
 
     /**
      * Creates a new table schema.
      */
     async createSchema(schema: string, ifNotExist?: boolean): Promise<void> {
-        throw new OperationNotSupportedError();
+        throw new OperationNotSupportedError("createSchema()");
     }
 
     /**
      * Drops table schema.
      */
     async dropSchema(schemaPath: string, ifExist?: boolean): Promise<void> {
-        throw new OperationNotSupportedError();
+        throw new OperationNotSupportedError("dropSchema()");
     }
 
     /**
@@ -392,7 +392,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      * Renames a table.
      */
     async renameTable(oldTableOrName: Table | string, newTableName: string): Promise<void> {
-        throw new OperationNotSupportedError();
+        throw new OperationNotSupportedError("renameTable()");
     }
 
     /**
@@ -461,14 +461,27 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      * Renames column in the given table.
      */
     async renameColumn(tableOrName: Table | string, oldTableColumnOrName: TableColumn | string, newTableColumnOrName: TableColumn | string): Promise<void> {
-        throw new OperationNotSupportedError();
+        const table = tableOrName instanceof Table ? tableOrName : await this.getCachedTable(tableOrName);
+        const oldColumn = oldTableColumnOrName instanceof TableColumn ? oldTableColumnOrName : table.columns.find(c => c.name === oldTableColumnOrName);
+        if (!oldColumn)
+            throw new Error(`Column "${oldTableColumnOrName}" was not found in the "${table.name}" table.`);
+
+        let newColumn;
+        if (newTableColumnOrName instanceof TableColumn) {
+            newColumn = newTableColumnOrName;
+        } else {
+            newColumn = oldColumn.clone();
+            newColumn.name = newTableColumnOrName;
+        }
+
+        return this.changeColumn(table, oldColumn, newColumn);
     }
 
     /**
      * Changes a column in the table.
      */
     async changeColumn(tableOrName: Table | string, oldTableColumnOrName: TableColumn | string, newColumn: TableColumn): Promise<void> {
-        throw new OperationNotSupportedError();
+        throw new OperationNotSupportedError("changeColumn()");
     }
 
     /**
@@ -483,21 +496,80 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      * Changes a column in the table.
      */
     async changeColumns(tableOrName: Table | string, changedColumns: { newColumn: TableColumn, oldColumn: TableColumn }[]): Promise<void> {
-        return; //throw new OperationNotSupportedError();
+        await PromiseUtils.runInSequence(changedColumns, changedColumn => this.changeColumn(tableOrName, changedColumn.oldColumn, changedColumn.newColumn));
     }
 
     /**
      * Drops column in the table.
      */
-    async dropColumn(tableOrName: Table | string, columnOrName: TableColumn | string): Promise<void> {
-        throw new OperationNotSupportedError();
+    async dropColumn(tableOrName: Table|string, columnOrName: TableColumn|string): Promise<void> {
+        const table = tableOrName instanceof Table ? tableOrName : await this.getCachedTable(tableOrName);
+        const column = columnOrName instanceof TableColumn ? columnOrName : table.findColumnByName(columnOrName);
+        if (!column)
+            throw new Error(`Column "${columnOrName}" was not found in table "${table.name}"`);
+
+        const clonedTable = table.clone();
+        const upQueries: Query[] = [];
+        const downQueries: Query[] = [];
+
+        // drop primary key constraint
+        if (column.isPrimary) {
+            const pkName = this.connection.namingStrategy.primaryKeyName(clonedTable.name, clonedTable.primaryColumns.map(column => column.name));
+            const columnNames = clonedTable.primaryColumns.map(primaryColumn => `"${primaryColumn.name}"`).join(", ");
+            upQueries.push(new Query(`ALTER TABLE ${this.escapePath(clonedTable)} DROP CONSTRAINT "${pkName}"`));
+            downQueries.push(new Query(`ALTER TABLE ${this.escapePath(clonedTable)} ADD CONSTRAINT "${pkName}" PRIMARY KEY (${columnNames})`));
+
+            // update column in table
+            const tableColumn = clonedTable.findColumnByName(column.name);
+            tableColumn!.isPrimary = false;
+
+            // if primary key have multiple columns, we must recreate it without dropped column
+            if (clonedTable.primaryColumns.length > 0) {
+                const pkName = this.connection.namingStrategy.primaryKeyName(clonedTable.name, clonedTable.primaryColumns.map(column => column.name));
+                const columnNames = clonedTable.primaryColumns.map(primaryColumn => `"${primaryColumn.name}"`).join(", ");
+                upQueries.push(new Query(`ALTER TABLE ${this.escapePath(clonedTable)} ADD CONSTRAINT "${pkName}" PRIMARY KEY (${columnNames})`));
+                downQueries.push(new Query(`ALTER TABLE ${this.escapePath(clonedTable)} DROP CONSTRAINT "${pkName}"`));
+            }
+        }
+
+        // drop column index
+        const columnIndex = clonedTable.indices.find(index => index.columnNames.length === 1 && index.columnNames[0] === column.name);
+        if (columnIndex) {
+            clonedTable.indices.splice(clonedTable.indices.indexOf(columnIndex), 1);
+            upQueries.push(this.dropIndexSql(columnIndex));
+            downQueries.push(this.createIndexSql(table, columnIndex));
+        }
+
+        // drop column check
+        const columnCheck = clonedTable.checks.find(check => !!check.columnNames && check.columnNames.length === 1 && check.columnNames[0] === column.name);
+        if (columnCheck) {
+            clonedTable.checks.splice(clonedTable.checks.indexOf(columnCheck), 1);
+            upQueries.push(this.dropCheckConstraintSql(table, columnCheck));
+            downQueries.push(this.createCheckConstraintSql(table, columnCheck));
+        }
+
+        // drop column unique
+        const columnUnique = clonedTable.uniques.find(unique => unique.columnNames.length === 1 && unique.columnNames[0] === column.name);
+        if (columnUnique) {
+            clonedTable.uniques.splice(clonedTable.uniques.indexOf(columnUnique), 1);
+            upQueries.push(this.dropUniqueConstraintSql(table, columnUnique));
+            downQueries.push(this.createUniqueConstraintSql(table, columnUnique));
+        }
+
+        upQueries.push(new Query(`ALTER TABLE ${this.escapePath(table)} DROP ("${column.name}")`));
+        downQueries.push(new Query(`ALTER TABLE ${this.escapePath(table)} ADD ${this.buildCreateColumnSql(column)}`));
+
+        await this.executeQueries(upQueries, downQueries);
+
+        clonedTable.removeColumn(column);
+        this.replaceCachedTable(table, clonedTable);
     }
 
     /**
      * Drops the columns in the table.
      */
-    async dropColumns(tableOrName: Table | string, columns: TableColumn[]): Promise<void> {
-        throw new OperationNotSupportedError();
+    async dropColumns(tableOrName: Table|string, columns: TableColumn[]): Promise<void> {
+        await PromiseUtils.runInSequence(columns, column => this.dropColumn(tableOrName, column));
     }
 
     /**
@@ -855,7 +927,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      * Returns current database.
      */
     protected async getCurrentDatabase(): Promise<string> {
-        throw new OperationNotSupportedError();
+        throw new OperationNotSupportedError("getCurrentDatabase()");
     }
 
     protected async loadViews(viewNames: string[]): Promise<View[]> {
