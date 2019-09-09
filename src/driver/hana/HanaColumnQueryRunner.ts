@@ -405,7 +405,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
         const downQueries: Query[] = [];
 
         upQueries.push(new Query(`ALTER TABLE ${this.escapePath(table.name)} ADD (${this.buildCreateColumnSql(column)})`));
-        downQueries.push(new Query(`ALTER TABLE ${this.escapePath(table.name)} DROP COLUMN "${column.name}"`));
+        downQueries.push(new Query(`ALTER TABLE ${this.escapePath(table.name)} DROP ("${column.name}")`));
 
         // create or update primary key constraint
         if (column.isPrimary) {
