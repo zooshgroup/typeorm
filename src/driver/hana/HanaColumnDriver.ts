@@ -469,6 +469,12 @@ export class HanaColumnDriver implements Driver {
         } else if (column.type === Boolean) {
             return "boolean";
 
+        } else if (column.type === "simple-array") {
+            return "text";
+
+        } else if (column.type === "simple-json") {
+            return "text";
+
         } else {
             return column.type as string || "";
         }
