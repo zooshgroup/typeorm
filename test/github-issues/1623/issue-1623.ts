@@ -4,6 +4,7 @@ import {closeTestingConnections, createTestingConnections} from "../../utils/tes
 import {ColumnMetadata} from "../../../src/metadata/ColumnMetadata";
 import {ColumnMetadataArgs} from "../../../src/metadata-args/ColumnMetadataArgs";
 import {User} from "./entity/User";
+import { HanaColumnDriver } from '../../../src/driver/hana/HanaColumnDriver';
 
 describe("github issues > #1623 NOT NULL constraint failed after a new column is added (SQLite)", () => {
 
@@ -18,6 +19,10 @@ describe("github issues > #1623 NOT NULL constraint failed after a new column is
     after(() => closeTestingConnections(connections));
 
     it("should correctly add new column", () => Promise.all(connections.map(async connection => {
+
+        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
+            return;
+        }
 
         const userMetadata = connection.getMetadata(User);
 
