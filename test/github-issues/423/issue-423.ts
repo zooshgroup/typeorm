@@ -2,6 +2,7 @@ import "reflect-metadata";
 import {CockroachDriver} from "../../../src/driver/cockroachdb/CockroachDriver";
 import {closeTestingConnections, createTestingConnections} from "../../utils/test-utils";
 import {Connection} from "../../../src/connection/Connection";
+import { HanaColumnDriver } from '../../../src/driver/hana/HanaColumnDriver';
 
 describe("github issues > #423 Cannot use Group as Table name && cannot autoSchemeSync when use alias Entity", () => {
 
@@ -23,7 +24,7 @@ describe("github issues > #423 Cannot use Group as Table name && cannot autoSche
         table!.should.exist;
         
         // CockroachDB stores unique indices as UNIQUE constraints
-        if (connection.driver instanceof CockroachDriver) {
+        if (connection.driver instanceof CockroachDriver || connection.driver instanceof HanaColumnDriver) {
             table!.uniques.length.should.be.equal(1);
             table!.uniques[0].name!.should.be.equal("Groups name");
             table!.uniques[0].columnNames[0].should.be.equal("name");

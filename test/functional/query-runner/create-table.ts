@@ -208,7 +208,7 @@ describe("query runner > create table", () => {
         }
 
         // When we mark column as unique, MySql create index for that column and we don't need to create index separately.
-        if (!(connection.driver instanceof MysqlDriver) && !(connection.driver instanceof OracleDriver))
+        if (!(connection.driver instanceof MysqlDriver) && !(connection.driver instanceof OracleDriver) && !(connection.driver instanceof HanaColumnDriver))
             categoryTableOptions.indices = [{ columnNames: ["questionId"] }];
 
         await queryRunner.createTable(new Table(categoryTableOptions), true);
@@ -223,8 +223,11 @@ describe("query runner > create table", () => {
         let questionTable = await queryRunner.getTable("question");
         const questionIdColumn = questionTable!.findColumnByName("id");
         questionIdColumn!.isPrimary.should.be.true;
-        questionIdColumn!.isGenerated.should.be.true;
-        questionIdColumn!.generationStrategy!.should.be.equal("increment");
+        if (!(connection.driver instanceof HanaColumnDriver)) {
+            questionIdColumn!.isGenerated.should.be.true;
+            questionIdColumn!.generationStrategy!.should.be.equal("increment");
+        }
+        
         questionTable!.should.exist;
 
         if (connection.driver instanceof MysqlDriver) {
@@ -233,7 +236,7 @@ describe("query runner > create table", () => {
             questionTable!.uniques.length.should.be.equal(0);
             questionTable!.indices.length.should.be.equal(2);
 
-        } else if (connection.driver instanceof CockroachDriver) {
+        } else if (connection.driver instanceof CockroachDriver || connection.driver instanceof HanaColumnDriver) {
             // CockroachDB stores unique indices as UNIQUE constraints
             questionTable!.uniques.length.should.be.equal(2);
             questionTable!.uniques[0].columnNames.length.should.be.equal(2);
@@ -256,8 +259,10 @@ describe("query runner > create table", () => {
         let categoryTable = await queryRunner.getTable("category");
         const categoryTableIdColumn = categoryTable!.findColumnByName("id");
         categoryTableIdColumn!.isPrimary.should.be.true;
-        categoryTableIdColumn!.isGenerated.should.be.true;
-        categoryTableIdColumn!.generationStrategy!.should.be.equal("increment");
+        if (!(connection.driver instanceof HanaColumnDriver)) {
+            categoryTableIdColumn!.isGenerated.should.be.true;
+            categoryTableIdColumn!.generationStrategy!.should.be.equal("increment");
+        }
         categoryTable!.should.exist;
         categoryTable!.foreignKeys.length.should.be.equal(1);
 
@@ -269,6 +274,9 @@ describe("query runner > create table", () => {
             // Oracle does not allow to put index on primary or unique columns.
             categoryTable!.indices.length.should.be.equal(0);
 
+        } else if (connection.driver instanceof HanaColumnDriver){
+            categoryTable!.uniques.length.should.be.equal(3);
+            categoryTable!.indices.length.should.be.equal(0);
         } else {
             categoryTable!.uniques.length.should.be.equal(3);
             categoryTable!.indices.length.should.be.equal(1);
@@ -309,7 +317,7 @@ describe("query runner > create table", () => {
             tagColumn!.isUnique.should.be.true;
             textColumn!.isUnique.should.be.true;
 
-        } else if (connection.driver instanceof CockroachDriver) {
+        } else if (connection.driver instanceof CockroachDriver || connection.driver instanceof HanaColumnDriver) {
             // CockroachDB stores unique indices as UNIQUE constraints
             table!.uniques.length.should.be.equal(4);
             table!.indices.length.should.be.equal(0);

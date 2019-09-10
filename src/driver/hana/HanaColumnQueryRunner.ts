@@ -1060,8 +1060,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
             // find unique constraints of table, group them by constraint name and build TableUnique.
             const tableUniqueConstraints = OrmUtils.uniq(dbConstraints.filter(dbConstraint => {
                 return dbConstraint["TABLE_NAME"] === dbTable["TABLE_NAME"] && dbConstraint["IS_UNIQUE_KEY"] === "TRUE"
-                    && dbConstraint["IS_PRIMARY_KEY"] !== "TRUE"
-                    && dbConstraint["CONSTRAINT_NAME"].startsWith("UQ_"); // HANA issue: how an unique qulumn can be differentiated from unique index?
+                    && dbConstraint["IS_PRIMARY_KEY"] !== "TRUE";
             }), dbConstraint => dbConstraint["CONSTRAINT_NAME"]);
 
             table.uniques = tableUniqueConstraints.map(constraint => {
@@ -1103,12 +1102,12 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
             // create TableIndex objects from the loaded indices
             table.indices = dbIndexes
                 .filter(dbIndex => dbIndex["TABLE_NAME"] === dbTable["TABLE_NAME"] && dbIndex["CONSTRAINT"] !== "PRIMARY KEY"
-                    && dbIndex["INDEX_NAME"].startsWith("IDX_")) // HANA issue: how an index can be differentiated from an unique?
+                    && dbIndex["CONSTRAINT"] !== "NOT NULL UNIQUE")
                 .map(dbIndex => {
                     const tableIndex = new TableIndex({
                         name: dbIndex["INDEX_NAME"],
                         columnNames: dbIndexColumns.filter(dbIndexColumn => dbIndexColumn["INDEX_OID"] === dbIndex["INDEX_OID"]).map(dbIndexColumn => dbIndexColumn["COLUMN_NAME"]),
-                        isUnique: dbIndex["INDEX_TYPE"] ? (dbIndex["INDEX_TYPE"]).includes("UNIQUE") : false
+                        isUnique: false
                     });
 
                     return tableIndex;
