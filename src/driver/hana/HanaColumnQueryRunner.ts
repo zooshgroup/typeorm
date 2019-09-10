@@ -557,7 +557,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
         }
 
         upQueries.push(new Query(`ALTER TABLE ${this.escapePath(table)} DROP ("${column.name}")`));
-        downQueries.push(new Query(`ALTER TABLE ${this.escapePath(table)} ADD ${this.buildCreateColumnSql(column)}`));
+        downQueries.push(new Query(`ALTER TABLE ${this.escapePath(table)} ADD (${this.buildCreateColumnSql(column)})`));
 
         await this.executeQueries(upQueries, downQueries);
 
@@ -1047,7 +1047,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
                     // TODO
                     tableColumn.default = dbColumn["DEFAULT_VALUE"] !== null
                         && dbColumn["DEFAULT_VALUE"] !== undefined
-                        && dbColumn["DEFAULT_VALUE"].trim() !== "NULL" ? tableColumn.default = dbColumn["DEFAULT_VALUE"].trim() : undefined;
+                        && dbColumn["DEFAULT_VALUE"].trim() !== "NULL" ? `'${dbColumn["DEFAULT_VALUE"].trim()}'` : undefined; // TODO might not work in some cases                       
 
                     tableColumn.isNullable = dbColumn["IS_NULLABLE"] === "TRUE";
                     tableColumn.isUnique = columnConstraints.length > 0 && columnConstraints[0]["IS_UNIQUE_KEY"] === "TRUE";

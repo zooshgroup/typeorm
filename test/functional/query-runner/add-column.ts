@@ -45,7 +45,7 @@ describe("query runner > add column", () => {
             name: "description",
             type: "varchar",
             length: "100",
-            default: connection.driver instanceof HanaColumnDriver ? "'''this is description'''" : "'this is description'"
+            default: "'this is description'"
         });
 
         await queryRunner.addColumn(table!, column1);
