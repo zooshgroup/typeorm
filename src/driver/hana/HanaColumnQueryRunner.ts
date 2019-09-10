@@ -485,14 +485,6 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     }
 
     /**
-     * Extracts schema name from given Table object or table name string.
-     */
-    protected extractSchema(target: Table | string): string | undefined {
-        const tableName = target instanceof Table ? target.name : target;
-        return tableName.indexOf(".") === -1 ? this.driver.options.schema : tableName.split(".")[0];
-    }
-
-    /**
      * Changes a column in the table.
      */
     async changeColumns(tableOrName: Table | string, changedColumns: { newColumn: TableColumn, oldColumn: TableColumn }[]): Promise<void> {
