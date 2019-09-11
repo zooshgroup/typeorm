@@ -1011,6 +1011,13 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
                 })
                 .map(dbColumn => {
                     const columnConstraints = dbConstraints.filter(dbConstraint => dbConstraint["TABLE_NAME"] === dbTable["TABLE_NAME"] && dbConstraint["COLUMN_NAME"] === dbColumn["COLUMN_NAME"]);
+                    const uniqueConstraint = columnConstraints.find(constraint => constraint["IS_PRIMARY_KEY"] !== "TRUE");
+                    const isConstraintComposite = uniqueConstraint
+                        ? !!dbConstraints.find(dbConstraint => dbConstraint["CONSTRAINT_NAME"] === uniqueConstraint["CONSTRAINT_NAME"]
+                            && dbConstraint["COLUMN_NAME"] !== dbColumn["COLUMN_NAME"])
+                        : false;
+                    const isUnique = !!uniqueConstraint && !isConstraintComposite;
+                    const isPrimary = !!columnConstraints.find(constraint =>  constraint["IS_PRIMARY_KEY"] === "TRUE");
 
                     const tableColumn = new TableColumn();
                     tableColumn.name = dbColumn["COLUMN_NAME"];
@@ -1042,8 +1049,9 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
                         && dbColumn["DEFAULT_VALUE"].trim() !== "NULL" ? `'${dbColumn["DEFAULT_VALUE"].trim()}'` : undefined; // TODO might not work in some cases                       
 
                     tableColumn.isNullable = dbColumn["IS_NULLABLE"] === "TRUE";
-                    tableColumn.isUnique = columnConstraints.length > 0 && columnConstraints[0]["IS_UNIQUE_KEY"] === "TRUE";
-                    tableColumn.isPrimary = columnConstraints.length > 0 && columnConstraints[0]["IS_PRIMARY_KEY"] === "TRUE";
+
+                    tableColumn.isUnique = isUnique;
+                    tableColumn.isPrimary = isPrimary;
                     tableColumn.isGenerated = dbColumn["GENERATED_ALWAYS_AS"] !== null; // todo this will not be set
                     tableColumn.comment = ""; // todo
                     return tableColumn;
