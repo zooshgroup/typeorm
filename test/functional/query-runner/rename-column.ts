@@ -23,8 +23,9 @@ describe("query runner > rename column", () => {
     after(() => closeTestingConnections(connections));
 
     it("should correctly rename column and revert rename", () => Promise.all(connections.map(async connection => {
-        if (connection.driver instanceof HanaColumnDriver) {
-            return;
+
+        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
+            //return;
         }
 
         // TODO: https://github.com/cockroachdb/cockroach/issues/32555
@@ -60,7 +61,8 @@ describe("query runner > rename column", () => {
     })));
 
     it("should correctly rename column with all constraints and revert rename", () => Promise.all(connections.map(async connection => {
-        if (connection.driver instanceof HanaColumnDriver) {
+        
+        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
             return;
         }
 
@@ -111,7 +113,8 @@ describe("query runner > rename column", () => {
     })));
 
     it("should correctly rename column with all constraints in custom table schema and database and revert rename", () => Promise.all(connections.map(async connection => {
-        if (connection.driver instanceof HanaColumnDriver) {
+        
+        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
             return;
         }
 

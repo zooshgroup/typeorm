@@ -33,7 +33,7 @@ describe("entity-schema > indices > basic", () => {
 
     it("should update the index to be unique", () => Promise.all(connections.map(async connection => {
 
-        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - renameColumn() missing
+        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
             return;
         }
 
@@ -64,7 +64,8 @@ describe("entity-schema > indices > basic", () => {
     })));
 
     it("should update the index swaping the 2 columns", () => Promise.all(connections.map(async connection => {
-        if (connection.driver instanceof HanaColumnDriver) {
+        
+        if (connection.driver instanceof HanaColumnDriver) {// TODO HANA - changeColumn() missing
             return;
         }
 

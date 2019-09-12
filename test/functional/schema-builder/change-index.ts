@@ -24,7 +24,8 @@ describe("schema builder > change index", () => {
     after(() => closeTestingConnections(connections));
 
     it("should correctly add new index", () => PromiseUtils.runInSequence(connections, async connection => {
-        if (connection.driver instanceof HanaColumnDriver) {
+        
+        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
             return;
         }
 
@@ -54,7 +55,8 @@ describe("schema builder > change index", () => {
     }));
 
     it("should correctly change index", () => PromiseUtils.runInSequence(connections, async connection => {
-        if (connection.driver instanceof HanaColumnDriver) {
+        
+        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
             return;
         }
         
@@ -72,7 +74,8 @@ describe("schema builder > change index", () => {
     }));
 
     it("should correctly drop removed index", () => PromiseUtils.runInSequence(connections, async connection => {
-        if (connection.driver instanceof HanaColumnDriver) {
+        
+        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
             return;
         }
         
@@ -93,7 +96,8 @@ describe("schema builder > change index", () => {
     }));
 
     it("should ignore index synchronization when `synchronize` set to false", () => PromiseUtils.runInSequence(connections, async connection => {
-        if (connection.driver instanceof HanaColumnDriver) {
+        
+        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
             return;
         }
         

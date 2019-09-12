@@ -20,7 +20,8 @@ describe("schema builder > add column", () => {
     after(() => closeTestingConnections(connections));
 
     it("should correctly add column", () => Promise.all(connections.map(async connection => {
-        if (connection.driver instanceof HanaColumnDriver) {
+        
+        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
             return;
         }
         

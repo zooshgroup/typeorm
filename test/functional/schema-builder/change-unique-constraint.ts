@@ -24,7 +24,7 @@ describe("schema builder > change unique constraint", () => {
     after(() => closeTestingConnections(connections));
 
     it("should correctly add new unique constraint", () => PromiseUtils.runInSequence(connections, async connection => {
-        if (connection.driver instanceof HanaColumnDriver) {
+        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
             return;
         }
 
@@ -81,7 +81,7 @@ describe("schema builder > change unique constraint", () => {
     }));
 
     it("should correctly change unique constraint", () => PromiseUtils.runInSequence(connections, async connection => {
-        if (connection.driver instanceof HanaColumnDriver) {
+        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
             return;
         }
 
@@ -127,7 +127,7 @@ describe("schema builder > change unique constraint", () => {
     }));
 
     it("should correctly drop removed unique constraint", () => PromiseUtils.runInSequence(connections, async connection => {
-        if (connection.driver instanceof HanaColumnDriver) {
+        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
             return;
         }
 

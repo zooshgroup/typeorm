@@ -19,7 +19,8 @@ describe("query runner > change column", () => {
     after(() => closeTestingConnections(connections));
 
     it("should correctly change column and revert change", () => Promise.all(connections.map(async connection => {
-        if (connection.driver instanceof HanaColumnDriver) {
+        
+        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
             return;
         }
         // CockroachDB does not allow changing primary columns and renaming constraints
@@ -83,8 +84,9 @@ describe("query runner > change column", () => {
     })));
 
     it("should correctly change column 'isGenerated' property and revert change", () => Promise.all(connections.map(async connection => {
-        if (connection.driver instanceof HanaColumnDriver) {
-            return;
+
+        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
+            //return;
         }
 
         // CockroachDB does not allow changing generated columns in existent tables

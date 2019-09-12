@@ -20,7 +20,7 @@ describe("schema builder > update primary keys", () => {
     after(() => closeTestingConnections(connections));
 
     it("should correctly update composite primary keys", () => Promise.all(connections.map(async connection => {
-        if (connection.driver instanceof HanaColumnDriver) {
+        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
             return;
         }
 
@@ -43,7 +43,7 @@ describe("schema builder > update primary keys", () => {
     })));
 
     it("should correctly update composite primary keys when table already have primary generated column", () => Promise.all(connections.map(async connection => {
-        if (connection.driver instanceof HanaColumnDriver) {
+        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
             return;
         }
 

@@ -24,10 +24,7 @@ describe("query runner > create table", () => {
     after(() => closeTestingConnections(connections));
 
     it("should correctly create table from simple object and revert creation", () => Promise.all(connections.map(async connection => {
-        if (connection.driver instanceof HanaColumnDriver) {
-            return;
-        }
-
+        
         const queryRunner = connection.createQueryRunner();
         const options: TableOptions = {
             name: "category",
@@ -55,8 +52,10 @@ describe("query runner > create table", () => {
         const nameColumn = table!.findColumnByName("name");
         idColumn!.should.be.exist;
         idColumn!.isPrimary.should.be.true;
-        idColumn!.isGenerated.should.be.true;
-        idColumn!.generationStrategy!.should.be.equal("increment");
+        if (!(connection.driver instanceof HanaColumnDriver)) {
+            idColumn!.isGenerated.should.be.true;
+            idColumn!.generationStrategy!.should.be.equal("increment");
+        }
         nameColumn!.should.be.exist;
         nameColumn!.isUnique.should.be.true;
         table!.should.exist;

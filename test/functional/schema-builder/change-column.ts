@@ -27,7 +27,8 @@ describe("schema builder > change column", () => {
     after(() => closeTestingConnections(connections));
 
     it("should correctly change column name", () => PromiseUtils.runInSequence(connections, async connection => {
-        if (connection.driver instanceof HanaColumnDriver) {
+        
+        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
             return;
         }
 
@@ -51,7 +52,8 @@ describe("schema builder > change column", () => {
     }));
 
     it("should correctly change column length", () => PromiseUtils.runInSequence(connections, async connection => {
-        if (connection.driver instanceof HanaColumnDriver) {
+        
+        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
             return;
         }
 
@@ -82,7 +84,8 @@ describe("schema builder > change column", () => {
     }));
 
     it("should correctly change column type", () => PromiseUtils.runInSequence(connections, async connection => {
-        if (connection.driver instanceof HanaColumnDriver) {
+
+        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
             return;
         }
 
@@ -109,7 +112,8 @@ describe("schema builder > change column", () => {
     }));
 
     it("should correctly make column primary and generated", () => PromiseUtils.runInSequence(connections, async connection => {
-        if (connection.driver instanceof HanaColumnDriver) {
+
+        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
             return;
         }
 
@@ -148,7 +152,8 @@ describe("schema builder > change column", () => {
     }));
 
     it("should correctly change column `isGenerated` property when column is on foreign key", () => PromiseUtils.runInSequence(connections, async connection => {
-        if (connection.driver instanceof HanaColumnDriver) {
+
+        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
             return;
         }
 
@@ -173,7 +178,8 @@ describe("schema builder > change column", () => {
     }));
 
     it("should correctly change non-generated column on to uuid-generated column", () => PromiseUtils.runInSequence(connections, async connection => {
-        if (connection.driver instanceof HanaColumnDriver) {
+
+        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
             return;
         }
 
@@ -225,7 +231,8 @@ describe("schema builder > change column", () => {
     }));
 
     it("should correctly change generated column generation strategy", () => PromiseUtils.runInSequence(connections, async connection => {
-        if (connection.driver instanceof HanaColumnDriver) {
+
+        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
             return;
         }
 

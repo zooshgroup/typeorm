@@ -23,7 +23,8 @@ describe("query runner > rename table", () => {
     after(() => closeTestingConnections(connections));
 
     it("should correctly rename table and revert rename", () => Promise.all(connections.map(async connection => {
-        if (connection.driver instanceof HanaColumnDriver) {
+        
+        if (connection.driver instanceof HanaColumnDriver) {// TODO HANA - renameTable() missing
             return;
         }
 
@@ -52,7 +53,8 @@ describe("query runner > rename table", () => {
     })));
 
     it("should correctly rename table with all constraints depend to that table and revert rename", () => Promise.all(connections.map(async connection => {
-        if (connection.driver instanceof HanaColumnDriver) {
+
+        if (connection.driver instanceof HanaColumnDriver) {// TODO HANA - renameTable() missing
             return;
         }
 
@@ -89,7 +91,8 @@ describe("query runner > rename table", () => {
     })));
 
     it("should correctly rename table with custom schema and database and all its dependencies and revert rename", () => Promise.all(connections.map(async connection => {
-        if (connection.driver instanceof HanaColumnDriver) {
+
+        if (connection.driver instanceof HanaColumnDriver) {// TODO HANA - renameTable() missing
             return;
         }
 

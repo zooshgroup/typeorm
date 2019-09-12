@@ -22,7 +22,8 @@ describe("schema builder > change check constraint", () => {
     after(() => closeTestingConnections(connections));
 
     it("should correctly add new check constraint", () => PromiseUtils.runInSequence(connections, async connection => {
-        if (connection.driver instanceof HanaColumnDriver) {
+        
+        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
             return;
         }
         
@@ -51,7 +52,8 @@ describe("schema builder > change check constraint", () => {
     }));
 
     it("should correctly change check", () => PromiseUtils.runInSequence(connections, async connection => {
-        if (connection.driver instanceof HanaColumnDriver) {
+        
+        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
             return;
         }
 
@@ -73,7 +75,8 @@ describe("schema builder > change check constraint", () => {
     }));
 
     it("should correctly drop removed check", () => PromiseUtils.runInSequence(connections, async connection => {
-        if (connection.driver instanceof HanaColumnDriver) {
+        
+        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
             return;
         }
 

@@ -18,7 +18,8 @@ describe("schema builder > drop column", () => {
     after(() => closeTestingConnections(connections));
 
     it("should correctly drop column", () => Promise.all(connections.map(async connection => {
-        if (connection.driver instanceof HanaColumnDriver) {
+
+        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
             return;
         }
 
