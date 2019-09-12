@@ -35,7 +35,7 @@ describe("database schema > indices > reading index from entity and updating dat
     it("should update the index to be unique", () => Promise.all(connections.map(async connection => {
 
         if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
-            //return;
+            return;
         }
 
         const entityMetadata = connection.entityMetadatas.find(x => x.name === "Person");

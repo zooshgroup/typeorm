@@ -25,7 +25,7 @@ describe("query runner > rename column", () => {
     it("should correctly rename column and revert rename", () => Promise.all(connections.map(async connection => {
 
         if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
-            //return;
+            return;
         }
 
         // TODO: https://github.com/cockroachdb/cockroach/issues/32555
