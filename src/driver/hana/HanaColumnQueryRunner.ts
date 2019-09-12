@@ -1017,7 +1017,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
                             && dbConstraint["COLUMN_NAME"] !== dbColumn["COLUMN_NAME"])
                         : false;
                     const isUnique = !!uniqueConstraint && !isConstraintComposite;
-                    const isPrimary = !!columnConstraints.find(constraint =>  constraint["IS_PRIMARY_KEY"] === "TRUE");
+                    const isPrimary = !!columnConstraints.find(constraint => constraint["IS_PRIMARY_KEY"] === "TRUE");
 
                     const tableColumn = new TableColumn();
                     tableColumn.name = dbColumn["COLUMN_NAME"];
@@ -1058,18 +1058,17 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
                 });
 
             // find unique constraints of table, group them by constraint name and build TableUnique.
-            const tableUniqueConstraints = OrmUtils.uniq(dbConstraints.filter(dbConstraint => {
-                return dbConstraint["TABLE_NAME"] === dbTable["TABLE_NAME"] && dbConstraint["IS_UNIQUE_KEY"] === "TRUE"
-                    && dbConstraint["IS_PRIMARY_KEY"] !== "TRUE";
-            }), dbConstraint => dbConstraint["CONSTRAINT_NAME"]);
-
-            table.uniques = tableUniqueConstraints.map(constraint => {
-                const uniques = dbConstraints.filter(dbC => dbC["CONSTRAINT_NAME"] === constraint["CONSTRAINT_NAME"]);
-                return new TableUnique({
-                    name: constraint["CONSTRAINT_NAME"],
-                    columnNames: uniques.map(u => u["COLUMN_NAME"])
+            table.uniques = dbIndexes
+                .filter(dbIndex => dbIndex["TABLE_NAME"] === dbTable["TABLE_NAME"] && dbIndex["CONSTRAINT"] !== "PRIMARY KEY"
+                    && dbIndex["CONSTRAINT"] === "NOT NULL UNIQUE")
+                .map(dbIndex => {
+                    const tableUnique = new TableUnique({
+                        name: dbIndex["INDEX_NAME"],
+                        columnNames: dbIndexColumns.filter(dbIndexColumn => dbIndexColumn["INDEX_OID"] === dbIndex["INDEX_OID"]).map(dbIndexColumn => dbIndexColumn["COLUMN_NAME"]),
+                    });
+                    
+                    return tableUnique;
                 });
-            });
 
             // find check constraints of table, group them by constraint name and build TableCheck.
             table.checks = dbConstraints
