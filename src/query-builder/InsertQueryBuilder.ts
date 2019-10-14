@@ -19,6 +19,7 @@ import {EntitySchema} from "../";
 import {OracleDriver} from "../driver/oracle/OracleDriver";
 import {SequenceIdGenerator, SequenceParameter} from "./SequenceIdGenerator";
 import { HanaColumnDriver } from '../driver/hana/HanaColumnDriver';
+import {AuroraDataApiDriver} from "../driver/aurora-data-api/AuroraDataApiDriver";
 
 /**
  * Allows to build complex sql queries in a fashion way and execute those queries.
@@ -233,7 +234,7 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
     }
 
     /**
-     * Adds additional ON CONFLICT statement supported in postgres.
+     * Adds additional ON CONFLICT statement supported in postgres and cockroach.
      */
     onConflict(statement: string): this {
         this.expressionMap.onConflict = statement;
@@ -260,9 +261,9 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
       if (statement && statement.columns instanceof Array)
           this.expressionMap.onUpdate.columns = statement.columns.map(column => `${column} = :${column}`).join(", ");
       if (statement && statement.overwrite instanceof Array) {
-        if (this.connection.driver instanceof MysqlDriver) {
+        if (this.connection.driver instanceof MysqlDriver || this.connection.driver instanceof AuroraDataApiDriver) {
           this.expressionMap.onUpdate.overwrite = statement.overwrite.map(column => `${column} = VALUES(${column})`).join(", ");
-        } else if (this.connection.driver instanceof PostgresDriver || this.connection.driver instanceof AbstractSqliteDriver) {
+        } else if (this.connection.driver instanceof PostgresDriver || this.connection.driver instanceof AbstractSqliteDriver || this.connection.driver instanceof CockroachDriver) {
           this.expressionMap.onUpdate.overwrite = statement.overwrite.map(column => `${column} = EXCLUDED.${column}`).join(", ");
         }
       }
@@ -284,7 +285,7 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
         const columnsExpression = this.createColumnNamesExpression();
         let query = "INSERT ";
 
-        if (this.connection.driver instanceof MysqlDriver) {
+        if (this.connection.driver instanceof MysqlDriver || this.connection.driver instanceof AuroraDataApiDriver) {
           query += `${this.expressionMap.onIgnore ? " IGNORE " : ""}`;
         }
 
@@ -294,7 +295,7 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
         if (columnsExpression) {
             query += `(${columnsExpression})`;
         } else {
-            if (!valuesExpression && this.connection.driver instanceof MysqlDriver) // special syntax for mysql DEFAULT VALUES insertion
+            if (!valuesExpression && (this.connection.driver instanceof MysqlDriver || this.connection.driver instanceof AuroraDataApiDriver)) // special syntax for mysql DEFAULT VALUES insertion
                 query += "()";
         }
 
@@ -312,13 +313,13 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
                 query += ` VALUES ${valuesExpression}`;
             }
         } else {
-            if (this.connection.driver instanceof MysqlDriver) { // special syntax for mysql DEFAULT VALUES insertion
+            if (this.connection.driver instanceof MysqlDriver || this.connection.driver instanceof AuroraDataApiDriver) { // special syntax for mysql DEFAULT VALUES insertion
                 query += " VALUES ()";
             } else {
                 query += ` DEFAULT VALUES`;
             }
         }
-        if (this.connection.driver instanceof PostgresDriver || this.connection.driver instanceof AbstractSqliteDriver) {
+        if (this.connection.driver instanceof PostgresDriver || this.connection.driver instanceof AbstractSqliteDriver || this.connection.driver instanceof CockroachDriver) {
           query += `${this.expressionMap.onIgnore ? " ON CONFLICT DO NOTHING " : ""}`;
           query += `${this.expressionMap.onConflict ? " ON CONFLICT " + this.expressionMap.onConflict : ""}`;
           if (this.expressionMap.onUpdate) {
@@ -326,7 +327,7 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
             query += `${columns ? " ON CONFLICT " + conflict + " DO UPDATE SET " + columns : ""}`;
             query += `${overwrite ? " ON CONFLICT " + conflict + " DO UPDATE SET " + overwrite : ""}`;
           }
-        } else if (this.connection.driver instanceof MysqlDriver) {
+        } else if (this.connection.driver instanceof MysqlDriver || this.connection.driver instanceof AuroraDataApiDriver) {
             if (this.expressionMap.onUpdate) {
               const { overwrite, columns } = this.expressionMap.onUpdate;
               query += `${columns ? " ON DUPLICATE KEY UPDATE " + columns : ""}`;
@@ -364,7 +365,8 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
                 && !(this.connection.driver instanceof HanaColumnDriver)
                 && !(this.connection.driver instanceof OracleDriver)
                 && !(this.connection.driver instanceof AbstractSqliteDriver)
-                && !(this.connection.driver instanceof MysqlDriver))
+                && !(this.connection.driver instanceof MysqlDriver)
+                && !(this.connection.driver instanceof AuroraDataApiDriver))
                 return false;
 
             return true;
@@ -501,7 +503,7 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
                         //     value = new ArrayParameter(value);
 
                         this.expressionMap.nativeParameters[paramName] = value;
-                        if (this.connection.driver instanceof MysqlDriver && this.connection.driver.spatialTypes.indexOf(column.type) !== -1) {
+                        if ((this.connection.driver instanceof MysqlDriver || this.connection.driver instanceof AuroraDataApiDriver) && this.connection.driver.spatialTypes.indexOf(column.type) !== -1) {
                             expression += `GeomFromText(${this.connection.driver.createParameter(paramName, parametersCount)})`;
                         } else if (this.connection.driver instanceof PostgresDriver && this.connection.driver.spatialTypes.indexOf(column.type) !== -1) {
                             if (column.srid != null) {

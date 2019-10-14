@@ -424,9 +424,18 @@ export class PostgresDriver implements Driver {
             if (typeof value === "string") {
                 return value;
             } else {
-                return Object.keys(value).map(key => {
-                    return `"${key}"=>"${value[key]}"`;
-                }).join(", ");
+                // https://www.postgresql.org/docs/9.0/hstore.html
+                const quoteString = (value: unknown) => {
+                    // If a string to be quoted is `null` or `undefined`, we return a literal unquoted NULL.
+                    // This way, NULL values can be stored in the hstore object.
+                    if (value === null || typeof value === "undefined") {
+                        return "NULL";
+                    }
+                    // Convert non-null values to string since HStore only stores strings anyway.
+                    // To include a double quote or a backslash in a key or value, escape it with a backslash.
+                    return `"${`${value}`.replace(/(?=["\\])/g, "\\")}"`;
+                };
+                return Object.keys(value).map(key => quoteString(key) + "=>" + quoteString(value[key])).join(",");
             }
 
         } else if (columnMetadata.type === "simple-array") {
@@ -436,7 +445,10 @@ export class PostgresDriver implements Driver {
             return DateUtils.simpleJsonToString(value);
 
         } else if (columnMetadata.type === "cube") {
-            return `(${value.join(", ")})`;
+            if (columnMetadata.isArray) {
+                return `{${value.map((cube: number[]) => `"(${cube.join(",")})"`).join(",")}}`;
+            }
+            return `(${value.join(",")})`;
 
         } else if (
             (
@@ -476,13 +488,13 @@ export class PostgresDriver implements Driver {
 
         } else if (columnMetadata.type === "hstore") {
             if (columnMetadata.hstoreType === "object") {
-                const regexp = /"(.*?)"=>"(.*?[^\\"])"/gi;
-                const matchValue = value.match(regexp);
+                const unescapeString = (str: string) => str.replace(/\\./g, (m) => m[1]);
+                const regexp = /"([^"\\]*(?:\\.[^"\\]*)*)"=>(?:(NULL)|"([^"\\]*(?:\\.[^"\\]*)*)")(?:,|$)/g;
                 const object: ObjectLiteral = {};
-                let match;
-                while (match = regexp.exec(matchValue)) {
-                    object[match[1].replace(`\\"`, `"`)] = match[2].replace(`\\"`, `"`);
-                }
+                `${value}`.replace(regexp, (_, key, nullValue, stringValue) => {
+                    object[unescapeString(key)] = nullValue ? null : unescapeString(stringValue);
+                    return "";
+                });
                 return object;
 
             } else {
@@ -496,7 +508,30 @@ export class PostgresDriver implements Driver {
             value = DateUtils.stringToSimpleJson(value);
 
         } else if (columnMetadata.type === "cube") {
-            value = value.replace(/[\(\)\s]+/g, "").split(",").map(Number);
+            value = value.replace(/[\(\)\s]+/g, ""); // remove whitespace
+            if (columnMetadata.isArray) {
+                /**
+                 * Strips these groups from `{"1,2,3","",NULL}`:
+                 * 1. ["1,2,3", undefined]  <- cube of arity 3
+                 * 2. ["", undefined]         <- cube of arity 0
+                 * 3. [undefined, "NULL"]     <- NULL
+                 */
+                const regexp = /(?:\"((?:[\d\s\.,])*)\")|(?:(NULL))/g;
+                const unparsedArrayString = value;
+
+                value = [];
+                let cube: RegExpExecArray | null = null;
+                // Iterate through all regexp matches for cubes/null in array
+                while ((cube = regexp.exec(unparsedArrayString)) !== null) {
+                    if (cube[1] !== undefined) {
+                        value.push(cube[1].split(",").filter(Boolean).map(Number));
+                    } else {
+                        value.push(undefined);
+                    }
+                }
+            } else {
+                value = value.split(",").filter(Boolean).map(Number);
+            }
 
         } else if (columnMetadata.type === "enum" || columnMetadata.type === "simple-enum" ) {
             if (columnMetadata.isArray) {
@@ -894,11 +929,14 @@ export class PostgresDriver implements Driver {
         // create a connection pool
         const pool = new this.postgres.Pool(connectionOptions);
         const { logger } = this.connection;
+
+        const poolErrorHandler = options.poolErrorHandler || ((error: any) => logger.log("warn", `Postgres pool raised an error. ${error}`));
+
         /*
           Attaching an error handler to pool errors is essential, as, otherwise, errors raised will go unhandled and
           cause the hosting app to crash.
          */
-        pool.on("error", (error: any) => logger.log("warn", `Postgres pool raised an error. ${error}`));
+        pool.on("error", poolErrorHandler);
 
         return new Promise((ok, fail) => {
             pool.connect((err: any, connection: any, release: Function) => {
