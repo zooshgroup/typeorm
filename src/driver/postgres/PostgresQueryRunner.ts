@@ -1739,10 +1739,13 @@ export class PostgresQueryRunner extends BaseQueryRunner implements QueryRunner 
     }
 
     protected createViewSql(view: View): Query {
+        const materializedClause = view.materialized ? "MATERIALIZED " : "";
+        const viewName = this.escapePath(view);
+
         if (typeof view.expression === "string") {
-            return new Query(`CREATE VIEW ${this.escapePath(view)} AS ${view.expression}`);
+            return new Query(`CREATE ${materializedClause}VIEW ${viewName} AS ${view.expression}`);
         } else {
-            return new Query(`CREATE VIEW ${this.escapePath(view)} AS ${view.expression(this.connection).getQuery()}`);
+            return new Query(`CREATE ${materializedClause}VIEW ${viewName} AS ${view.expression(this.connection).getQuery()}`);
         }
     }
 
@@ -1986,6 +1989,15 @@ export class PostgresQueryRunner extends BaseQueryRunner implements QueryRunner 
      * Builds ENUM type name from given table and column.
      */
     protected buildEnumName(table: Table, columnOrName: TableColumn|string, withSchema: boolean = true, disableEscape?: boolean, toOld?: boolean): string {
+        /**
+         * If enumName is specified in column options then use it instead
+         */
+        if (columnOrName instanceof TableColumn && columnOrName.enumName) {
+            let enumName = columnOrName.enumName;
+            if (toOld)
+                enumName = enumName + "_old";
+            return disableEscape ? enumName : `"${enumName}"`;
+        }
         const columnName = columnOrName instanceof TableColumn ? columnOrName.name : columnOrName;
         const schema = table.name.indexOf(".") === -1 ? this.driver.options.schema : table.name.split(".")[0];
         const tableName = table.name.indexOf(".") === -1 ? table.name : table.name.split(".")[1];

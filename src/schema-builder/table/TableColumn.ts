@@ -121,6 +121,11 @@ export class TableColumn {
     enum?: string[];
 
     /**
+     * Exact name of enum
+     */
+    enumName?: string;
+
+    /**
      * Generated column expression. Supports only in MySQL.
      */
     asExpression?: string;
@@ -167,6 +172,7 @@ export class TableColumn {
             this.isArray = options.isArray || false;
             this.comment = options.comment;
             this.enum = options.enum;
+            this.enumName = options.enumName;
             this.asExpression = options.asExpression;
             this.generatedType = options.generatedType;
             this.spatialFeatureType = options.spatialFeatureType;
@@ -194,6 +200,7 @@ export class TableColumn {
             zerofill: this.zerofill,
             unsigned: this.unsigned,
             enum: this.enum,
+            enumName: this.enumName,
             asExpression: this.asExpression,
             generatedType: this.generatedType,
             sequenceName: this.sequenceName,

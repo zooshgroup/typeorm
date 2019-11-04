@@ -164,6 +164,11 @@ export class ColumnMetadata {
     enum?: (string|number)[];
 
     /**
+     * Exact name of enum
+     */
+    enumName?: string;
+
+    /**
      * Generated column expression. Supports only in MySQL.
      */
     asExpression?: string;
@@ -378,6 +383,9 @@ export class ColumnMetadata {
             } else {
                 this.enum = options.args.options.enum;
             }
+        }
+        if (options.args.options.enumName) {
+            this.enumName = options.args.options.enumName;
         }
         if (options.args.options.asExpression) {
             this.asExpression = options.args.options.asExpression;
