@@ -1274,7 +1274,23 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      */
     protected createIndexSql(table: Table, index: TableIndex): Query {
         const columns = index.columnNames.map(columnName => `"${columnName}"`).join(", ");
-        return new Query(`CREATE ${index.isUnique ? "UNIQUE " : ""}INDEX "${index.name}" ON ${this.escapePath(table)} (${columns})`);
+        if (index.isFulltext && index.columnNames.length > 1) {
+            throw new Error("fulltext index is only supported for a single column");
+        }
+
+        let indexType = "";
+        if (index.isUnique)
+            indexType += "UNIQUE ";
+        if (index.isFulltext) {
+            const column = table.findColumnByName(index.columnNames[0]);
+            if (column && column.type !== 'text') {
+                indexType += "FULLTEXT ";
+            } else {
+                return new Query(`select 1 from dummy`);
+            }            
+        }
+
+        return new Query(`CREATE ${indexType}INDEX "${index.name}" ON ${this.escapePath(table)} (${columns})`);
     }
 
     /**
