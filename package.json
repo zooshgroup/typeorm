@@ -1,7 +1,7 @@
 {
   "name": "@zooshgroup/typeorm",
   "private": false,
-  "version": "0.2.20",
+  "version": "0.2.21",
   "description": "Data-Mapper ORM for TypeScript, ES7, ES6, ES5. Supports MySQL, PostgreSQL, MariaDB, SQLite, MS SQL Server, Oracle, MongoDB databases.",
   "license": "MIT",
   "readmeFilename": "README.md",
@@ -95,8 +95,12 @@
     "typescript": "^3.3.3333"
   },
   "dependencies": {
+<<<<<<< HEAD
     "@sap/hana-client": "^2.4.144",
     "app-root-path": "^2.0.1",
+=======
+    "app-root-path": "^3.0.0",
+>>>>>>> master
     "buffer": "^5.1.0",
     "chalk": "^2.4.2",
     "cli-highlight": "^2.0.0",
