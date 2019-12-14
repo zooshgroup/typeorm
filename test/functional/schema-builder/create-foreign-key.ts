@@ -4,7 +4,7 @@ import {CockroachDriver} from "../../../src/driver/cockroachdb/CockroachDriver";
 import {UniqueMetadata} from "../../../src/metadata/UniqueMetadata";
 import {closeTestingConnections, createTestingConnections, reloadTestingDatabases} from "../../utils/test-utils";
 import {ForeignKeyMetadata} from "../../../src/metadata/ForeignKeyMetadata";
-import { HanaColumnDriver } from '../../../src/driver/hana/HanaColumnDriver';
+import { HanaDriver } from '../../../src/driver/hana/HanaDriver';
 
 describe("schema builder > create foreign key", () => {
 
@@ -21,7 +21,7 @@ describe("schema builder > create foreign key", () => {
 
     it("should correctly create foreign key", () => Promise.all(connections.map(async connection => {
      
-        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
+        if (connection.driver instanceof HanaDriver) { // TODO HANA - changeColumn() missing
             return;
         }
 

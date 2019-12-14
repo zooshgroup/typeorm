@@ -23,7 +23,7 @@ import { TableCheck } from "./table/TableCheck";
 import { TableExclusion } from "./table/TableExclusion";
 import { View } from "./view/View";
 import { AuroraDataApiDriver } from "../driver/aurora-data-api/AuroraDataApiDriver";
-import { HanaColumnDriver } from '../driver/hana/HanaColumnDriver';
+import { HanaDriver } from '../driver/hana/HanaDriver';
 
 /**
  * Creates complete tables schemas in the database based on the entity metadatas.
@@ -143,7 +143,7 @@ export class RdbmsSchemaBuilder implements SchemaBuilder {
                 metadata.generatedColumns.forEach(generatedColumn => {
                     if (generatedColumn.sequenceName) {
                         sequenceSet.add(generatedColumn.sequenceName);
-                    } else if (generatedColumn.generationStrategy === 'increment' && this.queryRunner.connection.driver instanceof HanaColumnDriver) {
+                    } else if (generatedColumn.generationStrategy === 'increment' && this.queryRunner.connection.driver instanceof HanaDriver) {
                         sequenceSet.add(metadata.name + "_" + generatedColumn.propertyName + "_seq");
                     }
                 });
@@ -387,7 +387,7 @@ export class RdbmsSchemaBuilder implements SchemaBuilder {
             // check if table does not exist yet
             const existTable = this.queryRunner.loadedTables.find(table => {
                 const database = metadata.database && metadata.database !== this.connection.driver.database ? metadata.database : undefined;
-                const schema = metadata.schema || (<SqlServerDriver | PostgresDriver | HanaColumnDriver>this.connection.driver).options.schema;
+                const schema = metadata.schema || (<SqlServerDriver | PostgresDriver | HanaDriver>this.connection.driver).options.schema;
                 const fullTableName = this.connection.driver.buildTableName(metadata.tableName, schema, database);
 
                 return table.name === fullTableName;
@@ -409,7 +409,7 @@ export class RdbmsSchemaBuilder implements SchemaBuilder {
             // check if view does not exist yet
             const existView = this.queryRunner.loadedViews.find(view => {
                 const database = metadata.database && metadata.database !== this.connection.driver.database ? metadata.database : undefined;
-                const schema = metadata.schema || (<SqlServerDriver | PostgresDriver | HanaColumnDriver>this.connection.driver).options.schema;
+                const schema = metadata.schema || (<SqlServerDriver | PostgresDriver | HanaDriver>this.connection.driver).options.schema;
                 const fullViewName = this.connection.driver.buildTableName(metadata.tableName, schema, database);
                 const viewExpression = typeof view.expression === "string" ? view.expression.trim() : view.expression(this.connection).getQuery();
                 const metadataExpression = typeof metadata.expression === "string" ? metadata.expression.trim() : metadata.expression!(this.connection).getQuery();
@@ -453,7 +453,7 @@ export class RdbmsSchemaBuilder implements SchemaBuilder {
         await PromiseUtils.runInSequence(this.queryRunner.loadedViews, async view => {
             const existViewMetadata = this.viewEntityToSyncMetadatas.find(metadata => {
                 const database = metadata.database && metadata.database !== this.connection.driver.database ? metadata.database : undefined;
-                const schema = metadata.schema || (<SqlServerDriver | PostgresDriver | HanaColumnDriver>this.connection.driver).options.schema;
+                const schema = metadata.schema || (<SqlServerDriver | PostgresDriver | HanaDriver>this.connection.driver).options.schema;
                 const fullViewName = this.connection.driver.buildTableName(metadata.tableName, schema, database);
                 const viewExpression = typeof view.expression === "string" ? view.expression.trim() : view.expression(this.connection).getQuery();
                 const metadataExpression = typeof metadata.expression === "string" ? metadata.expression.trim() : metadata.expression!(this.connection).getQuery();

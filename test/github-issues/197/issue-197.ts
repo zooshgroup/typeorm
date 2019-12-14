@@ -3,7 +3,7 @@ import { closeTestingConnections, createTestingConnections, reloadTestingDatabas
 import { Connection } from "../../../src";
 import { EntityMetadata } from "../../../src";
 import { Person } from "./entity/person";
-import { HanaColumnDriver } from '../../../src/driver/hana/HanaColumnDriver';
+import { HanaDriver } from '../../../src/driver/hana/HanaDriver';
 
 describe("github issues > #197 Fails to drop indexes when removing fields", () => {
 
@@ -17,7 +17,7 @@ describe("github issues > #197 Fails to drop indexes when removing fields", () =
 
     it("it should drop the column and the referenced index", () => Promise.all(connections.map(async connection => {
 
-        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn()
+        if (connection.driver instanceof HanaDriver) { // TODO HANA - changeColumn()
             return;
         }
 

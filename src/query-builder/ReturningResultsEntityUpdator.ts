@@ -6,7 +6,7 @@ import {ColumnMetadata} from "../metadata/ColumnMetadata";
 import {UpdateResult} from "./result/UpdateResult";
 import {InsertResult} from "./result/InsertResult";
 import {OracleDriver} from "../driver/oracle/OracleDriver";
-import { HanaColumnDriver } from '../driver/hana/HanaColumnDriver';
+import { HanaDriver } from '../driver/hana/HanaDriver';
 
 /**
  * Updates entity with returning results in the entity insert and update operations.
@@ -111,7 +111,7 @@ export class ReturningResultsEntityUpdator {
                 });
             }
 
-            metadata.generatedColumns.filter(generatedColumn => generatedColumn.generationStrategy === 'sequence' || (generatedColumn.generationStrategy === 'increment' && this.queryRunner.connection.driver instanceof HanaColumnDriver)).forEach(generatedColumn => {
+            metadata.generatedColumns.filter(generatedColumn => generatedColumn.generationStrategy === 'sequence' || (generatedColumn.generationStrategy === 'increment' && this.queryRunner.connection.driver instanceof HanaDriver)).forEach(generatedColumn => {
                 let seqId = generatedColumn.getEntityValue(entity);
                 if (!seqId) // if it was not defined by a user then InsertQueryBuilder generates it by its own, get this generated value
                     seqId = this.expressionMap.nativeParameters["sequence_" + generatedColumn.databaseName + entityIndex];

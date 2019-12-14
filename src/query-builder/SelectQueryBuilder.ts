@@ -34,7 +34,7 @@ import {BroadcasterResult} from "../subscriber/BroadcasterResult";
 import {SelectQueryBuilderOption} from "./SelectQueryBuilderOption";
 import {ObjectUtils} from "../util/ObjectUtils";
 import {DriverUtils} from "../driver/DriverUtils";
-import { HanaColumnDriver } from '../driver/hana/HanaColumnDriver';
+import { HanaDriver } from '../driver/hana/HanaDriver';
 import {AuroraDataApiDriver} from "../driver/aurora-data-api/AuroraDataApiDriver";
 
 /**
@@ -1602,7 +1602,7 @@ export class SelectQueryBuilder<Entity> extends QueryBuilder<Entity> implements 
             if (offset)
                 throw new OffsetWithoutLimitNotSupportedError("MySQL");
 
-        } else if (this.connection.driver instanceof HanaColumnDriver) {
+        } else if (this.connection.driver instanceof HanaDriver) {
 
             if (limit && offset)
                 return " LIMIT " + limit + " OFFSET " + offset;
@@ -1654,7 +1654,7 @@ export class SelectQueryBuilder<Entity> extends QueryBuilder<Entity> implements 
                 } else if (driver instanceof PostgresDriver) {
                     return " FOR SHARE";
 
-                } else if (driver instanceof OracleDriver || driver instanceof HanaColumnDriver) {
+                } else if (driver instanceof OracleDriver || driver instanceof HanaDriver) {
                     return " FOR UPDATE";
 
                 } else if (driver instanceof SqlServerDriver) {
@@ -1664,7 +1664,7 @@ export class SelectQueryBuilder<Entity> extends QueryBuilder<Entity> implements 
                     throw new LockNotSupportedOnGivenDriverError();
                 }
             case "pessimistic_write":
-                if (driver instanceof MysqlDriver || driver instanceof AuroraDataApiDriver || driver instanceof PostgresDriver || driver instanceof OracleDriver || driver instanceof HanaColumnDriver) {
+                if (driver instanceof MysqlDriver || driver instanceof AuroraDataApiDriver || driver instanceof PostgresDriver || driver instanceof OracleDriver || driver instanceof HanaDriver) {
                     return " FOR UPDATE";
 
                 } else if (driver instanceof SqlServerDriver) {

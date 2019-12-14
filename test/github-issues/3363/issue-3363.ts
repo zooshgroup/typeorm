@@ -4,7 +4,7 @@ import {Connection} from "../../../src/connection/Connection";
 import {Post} from "./entity/Post";
 import {expect} from "chai";
 import { Category } from "./entity/Category";
-import { HanaColumnDriver } from '../../../src/driver/hana/HanaColumnDriver';
+import { HanaDriver } from '../../../src/driver/hana/HanaDriver';
 
 describe("github issues > #3363 Isolation Level in transaction() from Connection", () => {
 
@@ -18,7 +18,7 @@ describe("github issues > #3363 Isolation Level in transaction() from Connection
 
     it("should execute operations in READ UNCOMMITED isolation level", () => Promise.all(connections.map(async function(connection) {
 
-        if (connection.driver instanceof HanaColumnDriver) { // HANA "READ UNCOMMITTED" isolation level not supported
+        if (connection.driver instanceof HanaDriver) { // HANA "READ UNCOMMITTED" isolation level not supported
             return; 
         }
 

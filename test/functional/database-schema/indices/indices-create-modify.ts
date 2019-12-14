@@ -7,7 +7,7 @@ import {EntityMetadata} from "../../../../src/metadata/EntityMetadata";
 import {IndexMetadata} from "../../../../src/metadata/IndexMetadata";
 
 import {Person} from "./entity/Person";
-import { HanaColumnDriver } from '../../../../src/driver/hana/HanaColumnDriver';
+import { HanaDriver } from '../../../../src/driver/hana/HanaDriver';
 
 describe("database schema > indices > reading index from entity and updating database", () => {
 
@@ -34,7 +34,7 @@ describe("database schema > indices > reading index from entity and updating dat
 
     it("should update the index to be unique", () => Promise.all(connections.map(async connection => {
 
-        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
+        if (connection.driver instanceof HanaDriver) { // TODO HANA - changeColumn() missing
             return;
         }
 
@@ -66,7 +66,7 @@ describe("database schema > indices > reading index from entity and updating dat
 
     it("should update the index swaping the 2 columns", () => Promise.all(connections.map(async connection => {
 
-        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
+        if (connection.driver instanceof HanaDriver) { // TODO HANA - changeColumn() missing
             return;
         }
 

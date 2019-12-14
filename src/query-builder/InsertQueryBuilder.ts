@@ -18,7 +18,7 @@ import {BroadcasterResult} from "../subscriber/BroadcasterResult";
 import {EntitySchema} from "../";
 import {OracleDriver} from "../driver/oracle/OracleDriver";
 import {SequenceIdGenerator, SequenceParameter} from "./SequenceIdGenerator";
-import { HanaColumnDriver } from '../driver/hana/HanaColumnDriver';
+import { HanaDriver } from '../driver/hana/HanaDriver';
 import {AuroraDataApiDriver} from "../driver/aurora-data-api/AuroraDataApiDriver";
 
 /**
@@ -307,7 +307,7 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
         // add VALUES expression
         if (valuesExpression) {
             const valueSets = this.getValueSets();
-            if (valueSets.length > 1 && this.connection.driver instanceof HanaColumnDriver) {
+            if (valueSets.length > 1 && this.connection.driver instanceof HanaDriver) {
                 query += ` ${valuesExpression}`;
             } else {
                 query += ` VALUES ${valuesExpression}`;
@@ -362,7 +362,7 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
             // if user did not specified such list then return all columns except auto-increment one
             // for Oracle we return auto-increment column as well because Oracle does not support DEFAULT VALUES expression
             if (column.isGenerated && column.generationStrategy === "increment"
-                && !(this.connection.driver instanceof HanaColumnDriver)
+                && !(this.connection.driver instanceof HanaDriver)
                 && !(this.connection.driver instanceof OracleDriver)
                 && !(this.connection.driver instanceof AbstractSqliteDriver)
                 && !(this.connection.driver instanceof MysqlDriver)
@@ -406,7 +406,7 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
             let parametersCount = Object.keys(this.expressionMap.nativeParameters).length;
             valueSets.forEach((valueSet, valueSetIndex) => {
                 columns.forEach((column, columnIndex) => {
-                    if (valueSets.length > 1 && this.connection.driver instanceof HanaColumnDriver) {
+                    if (valueSets.length > 1 && this.connection.driver instanceof HanaDriver) {
                         if (columnIndex === 0) {
                             expression += "SELECT ";
                         }
@@ -469,7 +469,7 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
 
                     // set sequence name to query later and reinsert value
                     } else if (column.isGenerated && value === undefined &&
-                        (column.generationStrategy === "sequence" || (column.generationStrategy === 'increment' && this.connection.driver instanceof HanaColumnDriver))) {
+                        (column.generationStrategy === "sequence" || (column.generationStrategy === 'increment' && this.connection.driver instanceof HanaDriver))) {
                         const paramName = "sequence_" + column.databaseName + valueSetIndex;
                         const sequenceName = column.sequenceName ? column.sequenceName : column.entityMetadata.name + "_" + column.propertyName + "_seq";
                         this.expressionMap.nativeParameters[paramName] = new SequenceParameter(paramName, sequenceName);
@@ -478,7 +478,7 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
 
                     // if value for this column was not provided then insert default value
                     } else if (value === undefined) {
-                        if (this.connection.driver instanceof AbstractSqliteDriver || this.connection.driver instanceof HanaColumnDriver) { // unfortunately sqlite does not support DEFAULT expression in INSERT queries
+                        if (this.connection.driver instanceof AbstractSqliteDriver || this.connection.driver instanceof HanaDriver) { // unfortunately sqlite does not support DEFAULT expression in INSERT queries
                             if (column.default !== undefined) { // try to use default defined in the column
                                 expression += this.connection.driver.normalizeDefault(column);
                             } else {
@@ -523,7 +523,7 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
                         parametersCount++;
                     }
 
-                    if (valueSets.length > 1 && this.connection.driver instanceof HanaColumnDriver) {
+                    if (valueSets.length > 1 && this.connection.driver instanceof HanaDriver) {
                         if (columnIndex === columns.length - 1) {
                             expression += " FROM DUMMY ";
                             if (valueSetIndex !== valueSets.length - 1) {
@@ -557,7 +557,7 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
             valueSets.forEach((valueSet, insertionIndex) => {
                 const columns = Object.keys(valueSet);
                 columns.forEach((columnName, columnIndex) => {
-                    if (valueSets.length > 1 && this.connection.driver instanceof HanaColumnDriver) {
+                    if (valueSets.length > 1 && this.connection.driver instanceof HanaDriver) {
                         if (columnIndex === 0) {
                             expression += "SELECT ";
                         }
@@ -575,7 +575,7 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
 
                     // if value for this column was not provided then insert default value
                     } else if (value === undefined) {
-                        if (this.connection.driver instanceof AbstractSqliteDriver || this.connection.driver instanceof HanaColumnDriver) {
+                        if (this.connection.driver instanceof AbstractSqliteDriver || this.connection.driver instanceof HanaDriver) {
                             expression += "NULL";
 
                         } else {
@@ -589,7 +589,7 @@ export class InsertQueryBuilder<Entity> extends QueryBuilder<Entity> {
                         parametersCount++;
                     }
 
-                    if (valueSets.length > 1 && this.connection.driver instanceof HanaColumnDriver) {
+                    if (valueSets.length > 1 && this.connection.driver instanceof HanaDriver) {
                         if (columnIndex === columns.length - 1) {
                             expression += " FROM DUMMY ";
                             if (insertionIndex !== valueSets.length - 1) {

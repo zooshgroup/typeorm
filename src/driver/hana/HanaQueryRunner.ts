@@ -9,7 +9,7 @@ import { QueryRunnerAlreadyReleasedError } from "../../error/QueryRunnerAlreadyR
 import { View } from "../../schema-builder/view/View";
 import { Sequence } from "../../schema-builder/sequence/Sequence";
 import { Query } from "../Query";
-import { HanaColumnDriver } from "./HanaColumnDriver";
+import { HanaDriver } from "./HanaDriver";
 import { ReadStream } from "../../platform/PlatformTools";
 import { QueryFailedError } from "../../error/QueryFailedError";
 import { TableUnique } from "../../schema-builder/table/TableUnique";
@@ -28,7 +28,7 @@ import { PromiseUtils } from '../../util/PromiseUtils';
 /**
  * Runs queries on a hana database connection pool.
  */
-export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunner {
+export class HanaQueryRunner extends BaseQueryRunner implements QueryRunner {
 
     // -------------------------------------------------------------------------
     // Public Implemented Properties
@@ -37,7 +37,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     /**
      * Database driver used by connection.
      */
-    driver: HanaColumnDriver;
+    driver: HanaDriver;
 
     // -------------------------------------------------------------------------
     // Protected Properties
@@ -49,7 +49,7 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
     // Constructor
     // -------------------------------------------------------------------------
 
-    constructor(driver: HanaColumnDriver) {
+    constructor(driver: HanaDriver) {
         super();
         this.driver = driver;
         this.connection = driver.connection;
@@ -1121,8 +1121,10 @@ export class HanaColumnQueryRunner extends BaseQueryRunner implements QueryRunne
      */
     protected createTableSql(table: Table, createForeignKeys?: boolean): Query {
 
+        const tableType = this.driver.options.tableType ? this.driver.options.tableType : "column";
+
         const columnDefinitions = table.columns.map(column => this.buildCreateColumnSql(column)).join(", ");
-        let sql = `CREATE COLUMN TABLE ${this.escapePath(table)} (${columnDefinitions}`;
+        let sql = `CREATE ${tableType} TABLE ${this.escapePath(table)} (${columnDefinitions}`;
 
         table.columns
             .filter(column => column.isUnique)

@@ -5,7 +5,7 @@ import {AbstractSqliteDriver} from "../../../src/driver/sqlite-abstract/Abstract
 import {SqlServerDriver} from "../../../src/driver/sqlserver/SqlServerDriver";
 import {createTestingConnections, closeTestingConnections, reloadTestingDatabases} from "../../utils/test-utils";
 import {Connection, Table} from "../../../src";
-import { HanaColumnDriver } from '../../../src/driver/hana/HanaColumnDriver';
+import { HanaDriver } from '../../../src/driver/hana/HanaDriver';
 
 describe("github issues > #3379 Migration will keep create and drop indexes if index name is the same across tables", () => {
 
@@ -18,7 +18,7 @@ describe("github issues > #3379 Migration will keep create and drop indexes if i
 
     it("should not recreate indices", () => Promise.all(connections.map(async connection => {
 
-        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() not implemented
+        if (connection.driver instanceof HanaDriver) { // TODO HANA - changeColumn() not implemented
             return;
         }
 

@@ -6,7 +6,7 @@ import {Teacher} from "./entity/Teacher";
 import {Post} from "./entity/Post";
 import {CheckMetadata} from "../../../src/metadata/CheckMetadata";
 import {MysqlDriver} from "../../../src/driver/mysql/MysqlDriver";
-import { HanaColumnDriver } from '../../../src/driver/hana/HanaColumnDriver';
+import { HanaDriver } from '../../../src/driver/hana/HanaDriver';
 
 describe("schema builder > change check constraint", () => {
 
@@ -23,7 +23,7 @@ describe("schema builder > change check constraint", () => {
 
     it("should correctly add new check constraint", () => PromiseUtils.runInSequence(connections, async connection => {
         
-        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
+        if (connection.driver instanceof HanaDriver) { // TODO HANA - changeColumn() missing
             return;
         }
         
@@ -53,7 +53,7 @@ describe("schema builder > change check constraint", () => {
 
     it("should correctly change check", () => PromiseUtils.runInSequence(connections, async connection => {
         
-        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
+        if (connection.driver instanceof HanaDriver) { // TODO HANA - changeColumn() missing
             return;
         }
 
@@ -76,7 +76,7 @@ describe("schema builder > change check constraint", () => {
 
     it("should correctly drop removed check", () => PromiseUtils.runInSequence(connections, async connection => {
         
-        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
+        if (connection.driver instanceof HanaDriver) { // TODO HANA - changeColumn() missing
             return;
         }
 

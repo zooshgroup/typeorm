@@ -17,7 +17,7 @@ import {SqlServerDriver} from "../../../../src/driver/sqlserver/SqlServerDriver"
 import {AbstractSqliteDriver} from "../../../../src/driver/sqlite-abstract/AbstractSqliteDriver";
 import {OracleDriver} from "../../../../src/driver/oracle/OracleDriver";
 import {LockNotSupportedOnGivenDriverError} from "../../../../src/error/LockNotSupportedOnGivenDriverError";
-import { HanaColumnDriver } from '../../../../src/driver/hana/HanaColumnDriver';
+import { HanaDriver } from '../../../../src/driver/hana/HanaDriver';
 
 describe("repository > find options > locking", () => {
 
@@ -88,7 +88,7 @@ describe("repository > find options > locking", () => {
         } else if (connection.driver instanceof PostgresDriver) {
             expect(executedSql[0].indexOf("FOR SHARE") !== -1).to.be.true;
 
-        } else if (connection.driver instanceof OracleDriver || connection.driver instanceof HanaColumnDriver) {
+        } else if (connection.driver instanceof OracleDriver || connection.driver instanceof HanaDriver) {
             expect(executedSql[0].indexOf("FOR UPDATE") !== -1).to.be.true;
 
         } else if (connection.driver instanceof SqlServerDriver) {
@@ -116,7 +116,7 @@ describe("repository > find options > locking", () => {
         });
 
         if (connection.driver instanceof MysqlDriver || connection.driver instanceof PostgresDriver || connection.driver instanceof OracleDriver || 
-            connection.driver instanceof HanaColumnDriver) {
+            connection.driver instanceof HanaDriver) {
             expect(executedSql[0].indexOf("FOR UPDATE") !== -1).to.be.true;
 
         } else if (connection.driver instanceof SqlServerDriver) {

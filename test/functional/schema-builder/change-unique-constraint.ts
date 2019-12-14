@@ -8,7 +8,7 @@ import {MysqlDriver} from "../../../src/driver/mysql/MysqlDriver";
 import {Post} from "./entity/Post";
 import {AbstractSqliteDriver} from "../../../src/driver/sqlite-abstract/AbstractSqliteDriver";
 import {IndexMetadata} from "../../../src/metadata/IndexMetadata";
-import { HanaColumnDriver } from '../../../src/driver/hana/HanaColumnDriver';
+import { HanaDriver } from '../../../src/driver/hana/HanaDriver';
 
 describe("schema builder > change unique constraint", () => {
 
@@ -24,7 +24,7 @@ describe("schema builder > change unique constraint", () => {
     after(() => closeTestingConnections(connections));
 
     it("should correctly add new unique constraint", () => PromiseUtils.runInSequence(connections, async connection => {
-        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
+        if (connection.driver instanceof HanaDriver) { // TODO HANA - changeColumn() missing
             return;
         }
 
@@ -81,7 +81,7 @@ describe("schema builder > change unique constraint", () => {
     }));
 
     it("should correctly change unique constraint", () => PromiseUtils.runInSequence(connections, async connection => {
-        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
+        if (connection.driver instanceof HanaDriver) { // TODO HANA - changeColumn() missing
             return;
         }
 
@@ -127,7 +127,7 @@ describe("schema builder > change unique constraint", () => {
     }));
 
     it("should correctly drop removed unique constraint", () => PromiseUtils.runInSequence(connections, async connection => {
-        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
+        if (connection.driver instanceof HanaDriver) { // TODO HANA - changeColumn() missing
             return;
         }
 

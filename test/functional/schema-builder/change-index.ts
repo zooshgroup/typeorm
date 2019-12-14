@@ -8,7 +8,7 @@ import {Teacher} from "./entity/Teacher";
 import {Student} from "./entity/Student";
 import {TableIndex} from "../../../src/schema-builder/table/TableIndex";
 import {expect} from "chai";
-import { HanaColumnDriver } from '../../../src/driver/hana/HanaColumnDriver';
+import { HanaDriver } from '../../../src/driver/hana/HanaDriver';
 
 describe("schema builder > change index", () => {
 
@@ -25,7 +25,7 @@ describe("schema builder > change index", () => {
 
     it("should correctly add new index", () => PromiseUtils.runInSequence(connections, async connection => {
         
-        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
+        if (connection.driver instanceof HanaDriver) { // TODO HANA - changeColumn() missing
             return;
         }
 
@@ -56,7 +56,7 @@ describe("schema builder > change index", () => {
 
     it("should correctly change index", () => PromiseUtils.runInSequence(connections, async connection => {
         
-        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
+        if (connection.driver instanceof HanaDriver) { // TODO HANA - changeColumn() missing
             return;
         }
         
@@ -75,7 +75,7 @@ describe("schema builder > change index", () => {
 
     it("should correctly drop removed index", () => PromiseUtils.runInSequence(connections, async connection => {
         
-        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
+        if (connection.driver instanceof HanaDriver) { // TODO HANA - changeColumn() missing
             return;
         }
         
@@ -97,7 +97,7 @@ describe("schema builder > change index", () => {
 
     it("should ignore index synchronization when `synchronize` set to false", () => PromiseUtils.runInSequence(connections, async connection => {
         
-        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
+        if (connection.driver instanceof HanaDriver) { // TODO HANA - changeColumn() missing
             return;
         }
         

@@ -18,7 +18,7 @@ import {CannotGetEntityManagerNotConnectedError} from "../../../src/error/Cannot
 import {ConnectionOptions} from "../../../src/connection/ConnectionOptions";
 import {PostgresConnectionOptions} from "../../../src/driver/postgres/PostgresConnectionOptions";
 import {PromiseUtils} from "../../../src/util/PromiseUtils";
-import { HanaColumnDriver } from '../../../src/driver/hana/HanaColumnDriver';
+import { HanaDriver } from '../../../src/driver/hana/HanaDriver';
 
 describe("Connection", () => {
     // const resourceDir = __dirname + "/../../../../../test/functional/connection/";
@@ -213,7 +213,7 @@ describe("Connection", () => {
 
         it("should return sql log properly", () => Promise.all(connections.map(async connection => {
 
-            if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
+            if (connection.driver instanceof HanaDriver) { // TODO HANA - changeColumn() missing
                 return;
             }
     

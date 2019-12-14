@@ -15,7 +15,7 @@ import {SqljsDriver} from "../driver/sqljs/SqljsDriver";
 import {MysqlDriver} from "../driver/mysql/MysqlDriver";
 import {BroadcasterResult} from "../subscriber/BroadcasterResult";
 import {EntitySchema} from "../index";
-import { HanaColumnDriver } from '../driver/hana/HanaColumnDriver';
+import { HanaDriver } from '../driver/hana/HanaDriver';
 import {AuroraDataApiDriver} from "../driver/aurora-data-api/AuroraDataApiDriver";
 
 /**
@@ -81,7 +81,7 @@ export class DeleteQueryBuilder<Entity> extends QueryBuilder<Entity> implements 
                 // don't return 0 because it could confuse. null means that we did not receive this value
                 deleteResult.affected = typeof result[1] === "number" ? result[1] : null;
 
-            } else if (driver instanceof OracleDriver || driver instanceof HanaColumnDriver) {
+            } else if (driver instanceof OracleDriver || driver instanceof HanaDriver) {
                 deleteResult.affected = result;
 
             } else {

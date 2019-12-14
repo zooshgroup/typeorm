@@ -4,7 +4,7 @@ import {CockroachDriver} from "../../../src/driver/cockroachdb/CockroachDriver";
 import {closeTestingConnections, createTestingConnections, reloadTestingDatabases} from "../../utils/test-utils";
 import {Table} from "../../../src/schema-builder/table/Table";
 import {TableIndex} from "../../../src/schema-builder/table/TableIndex";
-import { HanaColumnDriver } from '../../../src/driver/hana/HanaColumnDriver';
+import { HanaDriver } from '../../../src/driver/hana/HanaDriver';
 
 describe("query runner > create index", () => {
 
@@ -53,7 +53,7 @@ describe("query runner > create index", () => {
         let table = await queryRunner.getTable("question");
 
         // CockroachDB stores unique indices as UNIQUE constraints
-        if (connection.driver instanceof CockroachDriver || connection.driver instanceof HanaColumnDriver) {
+        if (connection.driver instanceof CockroachDriver || connection.driver instanceof HanaDriver) {
             table!.indices.length.should.be.equal(1);
             table!.uniques.length.should.be.equal(1);
 

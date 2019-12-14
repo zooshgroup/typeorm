@@ -5,7 +5,7 @@ import {closeTestingConnections, createTestingConnections} from "../../utils/tes
 import {Category} from "./entity/Category";
 import {Question} from "./entity/Question";
 import {AbstractSqliteDriver} from "../../../src/driver/sqlite-abstract/AbstractSqliteDriver";
-import { HanaColumnDriver } from '../../../src/driver/hana/HanaColumnDriver';
+import { HanaDriver } from '../../../src/driver/hana/HanaDriver';
 
 describe("schema builder > update primary keys", () => {
 
@@ -20,7 +20,7 @@ describe("schema builder > update primary keys", () => {
     after(() => closeTestingConnections(connections));
 
     it("should correctly update composite primary keys", () => Promise.all(connections.map(async connection => {
-        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
+        if (connection.driver instanceof HanaDriver) { // TODO HANA - changeColumn() missing
             return;
         }
 
@@ -43,7 +43,7 @@ describe("schema builder > update primary keys", () => {
     })));
 
     it("should correctly update composite primary keys when table already have primary generated column", () => Promise.all(connections.map(async connection => {
-        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
+        if (connection.driver instanceof HanaDriver) { // TODO HANA - changeColumn() missing
             return;
         }
 

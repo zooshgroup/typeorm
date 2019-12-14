@@ -6,7 +6,7 @@ import {closeTestingConnections, createTestingConnections} from "../../utils/tes
 import {TableColumn} from "../../../src/schema-builder/table/TableColumn";
 import {AbstractSqliteDriver} from "../../../src/driver/sqlite-abstract/AbstractSqliteDriver";
 import {MysqlDriver} from "../../../src/driver/mysql/MysqlDriver";
-import { HanaColumnDriver } from '../../../src/driver/hana/HanaColumnDriver';
+import { HanaDriver } from '../../../src/driver/hana/HanaDriver';
 
 describe("query runner > add column", () => {
 
@@ -62,7 +62,7 @@ describe("query runner > add column", () => {
             column1!.isPrimary.should.be.true;
 
         // MySql and Sqlite does not supports autoincrement composite primary keys.
-        if (!(connection.driver instanceof MysqlDriver) && !(connection.driver instanceof AbstractSqliteDriver) && !(connection.driver instanceof CockroachDriver) && !(connection.driver instanceof HanaColumnDriver)) {
+        if (!(connection.driver instanceof MysqlDriver) && !(connection.driver instanceof AbstractSqliteDriver) && !(connection.driver instanceof CockroachDriver) && !(connection.driver instanceof HanaDriver)) {
             column1!.isGenerated.should.be.true;
             column1!.generationStrategy!.should.be.equal("increment");
         }

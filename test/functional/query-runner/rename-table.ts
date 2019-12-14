@@ -7,7 +7,7 @@ import {Table} from "../../../src/schema-builder/table/Table";
 import {AbstractSqliteDriver} from "../../../src/driver/sqlite-abstract/AbstractSqliteDriver";
 import {PostgresDriver} from "../../../src/driver/postgres/PostgresDriver";
 import {MysqlDriver} from "../../../src/driver/mysql/MysqlDriver";
-import { HanaColumnDriver } from '../../../src/driver/hana/HanaColumnDriver';
+import { HanaDriver } from '../../../src/driver/hana/HanaDriver';
 
 describe("query runner > rename table", () => {
 
@@ -24,7 +24,7 @@ describe("query runner > rename table", () => {
 
     it("should correctly rename table and revert rename", () => Promise.all(connections.map(async connection => {
         
-        if (connection.driver instanceof HanaColumnDriver) {// TODO HANA - renameTable() missing
+        if (connection.driver instanceof HanaDriver) {// TODO HANA - renameTable() missing
             return;
         }
 
@@ -54,7 +54,7 @@ describe("query runner > rename table", () => {
 
     it("should correctly rename table with all constraints depend to that table and revert rename", () => Promise.all(connections.map(async connection => {
 
-        if (connection.driver instanceof HanaColumnDriver) {// TODO HANA - renameTable() missing
+        if (connection.driver instanceof HanaDriver) {// TODO HANA - renameTable() missing
             return;
         }
 
@@ -92,7 +92,7 @@ describe("query runner > rename table", () => {
 
     it("should correctly rename table with custom schema and database and all its dependencies and revert rename", () => Promise.all(connections.map(async connection => {
 
-        if (connection.driver instanceof HanaColumnDriver) {// TODO HANA - renameTable() missing
+        if (connection.driver instanceof HanaDriver) {// TODO HANA - renameTable() missing
             return;
         }
 

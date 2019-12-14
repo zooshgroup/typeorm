@@ -2,7 +2,7 @@ import { Driver } from "../Driver";
 import { ObjectLiteral } from "../../common/ObjectLiteral";
 import { DriverPackageNotInstalledError } from "../../error/DriverPackageNotInstalledError";
 import { ColumnMetadata } from "../../metadata/ColumnMetadata";
-import { HanaColumnQueryRunner } from "./HanaColumnQueryRunner";
+import { HanaQueryRunner } from "./HanaQueryRunner";
 import { DateUtils } from "../../util/DateUtils";
 import { PlatformTools } from "../../platform/PlatformTools";
 import { Connection } from "../../connection/Connection";
@@ -18,7 +18,7 @@ import { ApplyValueTransformers } from "../../util/ApplyValueTransformers";
 /**
  * Organizes communication with PostgreSQL DBMS.
  */
-export class HanaColumnDriver implements Driver {
+export class HanaDriver implements Driver {
 
     // -------------------------------------------------------------------------
     // Public Properties
@@ -261,7 +261,7 @@ export class HanaColumnDriver implements Driver {
      * Creates a query runner used to execute database queries.
      */
     createQueryRunner() {
-        return new HanaColumnQueryRunner(this);
+        return new HanaQueryRunner(this);
     }
 
     /**

@@ -10,7 +10,7 @@ import {MysqlDriver} from "../../../src/driver/mysql/MysqlDriver";
 import {AbstractSqliteDriver} from "../../../src/driver/sqlite-abstract/AbstractSqliteDriver";
 import {OracleDriver} from "../../../src/driver/oracle/OracleDriver";
 import {Photo} from "./entity/Photo";
-import { HanaColumnDriver } from '../../../src/driver/hana/HanaColumnDriver';
+import { HanaDriver } from '../../../src/driver/hana/HanaDriver';
 import {Book2, Book} from "./entity/Book";
 import {SqliteDriver} from "../../../src/driver/sqlite/SqliteDriver";
 
@@ -54,7 +54,7 @@ describe("query runner > create table", () => {
         const nameColumn = table!.findColumnByName("name");
         idColumn!.should.be.exist;
         idColumn!.isPrimary.should.be.true;
-        if (!(connection.driver instanceof HanaColumnDriver)) {
+        if (!(connection.driver instanceof HanaDriver)) {
             idColumn!.isGenerated.should.be.true;
             idColumn!.generationStrategy!.should.be.equal("increment");
         }
@@ -209,7 +209,7 @@ describe("query runner > create table", () => {
         }
 
         // When we mark column as unique, MySql create index for that column and we don't need to create index separately.
-        if (!(connection.driver instanceof MysqlDriver) && !(connection.driver instanceof OracleDriver) && !(connection.driver instanceof HanaColumnDriver))
+        if (!(connection.driver instanceof MysqlDriver) && !(connection.driver instanceof OracleDriver) && !(connection.driver instanceof HanaDriver))
             categoryTableOptions.indices = [{ columnNames: ["questionId"] }];
 
         await queryRunner.createTable(new Table(categoryTableOptions), true);
@@ -224,7 +224,7 @@ describe("query runner > create table", () => {
         let questionTable = await queryRunner.getTable("question");
         const questionIdColumn = questionTable!.findColumnByName("id");
         questionIdColumn!.isPrimary.should.be.true;
-        if (!(connection.driver instanceof HanaColumnDriver)) {
+        if (!(connection.driver instanceof HanaDriver)) {
             questionIdColumn!.isGenerated.should.be.true;
             questionIdColumn!.generationStrategy!.should.be.equal("increment");
         }
@@ -237,7 +237,7 @@ describe("query runner > create table", () => {
             questionTable!.uniques.length.should.be.equal(0);
             questionTable!.indices.length.should.be.equal(2);
 
-        } else if (connection.driver instanceof CockroachDriver || connection.driver instanceof HanaColumnDriver) {
+        } else if (connection.driver instanceof CockroachDriver || connection.driver instanceof HanaDriver) {
             // CockroachDB stores unique indices as UNIQUE constraints
             questionTable!.uniques.length.should.be.equal(2);
             questionTable!.uniques[0].columnNames.length.should.be.equal(2);
@@ -260,7 +260,7 @@ describe("query runner > create table", () => {
         let categoryTable = await queryRunner.getTable("category");
         const categoryTableIdColumn = categoryTable!.findColumnByName("id");
         categoryTableIdColumn!.isPrimary.should.be.true;
-        if (!(connection.driver instanceof HanaColumnDriver)) {
+        if (!(connection.driver instanceof HanaDriver)) {
             categoryTableIdColumn!.isGenerated.should.be.true;
             categoryTableIdColumn!.generationStrategy!.should.be.equal("increment");
         }
@@ -275,7 +275,7 @@ describe("query runner > create table", () => {
             // Oracle does not allow to put index on primary or unique columns.
             categoryTable!.indices.length.should.be.equal(0);
 
-        } else if (connection.driver instanceof HanaColumnDriver){
+        } else if (connection.driver instanceof HanaDriver){
             categoryTable!.uniques.length.should.be.equal(3);
             categoryTable!.indices.length.should.be.equal(0);
         } else {
@@ -318,7 +318,7 @@ describe("query runner > create table", () => {
             tagColumn!.isUnique.should.be.true;
             textColumn!.isUnique.should.be.true;
 
-        } else if (connection.driver instanceof CockroachDriver || connection.driver instanceof HanaColumnDriver) {
+        } else if (connection.driver instanceof CockroachDriver || connection.driver instanceof HanaDriver) {
             // CockroachDB stores unique indices as UNIQUE constraints
             table!.uniques.length.should.be.equal(4);
             table!.indices.length.should.be.equal(0);

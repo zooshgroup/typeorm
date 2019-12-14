@@ -9,7 +9,7 @@ import {ObjectLiteral} from "../common/ObjectLiteral";
 import {OracleDriver} from "../driver/oracle/OracleDriver";
 import {PostgresConnectionOptions} from "../driver/postgres/PostgresConnectionOptions";
 import {SqlServerConnectionOptions} from "../driver/sqlserver/SqlServerConnectionOptions";
-import { HanaColumnDriver } from '../driver/hana/HanaColumnDriver';
+import { HanaDriver } from '../driver/hana/HanaDriver';
 import { Sequence } from '../schema-builder/sequence/Sequence';
 import { InsertQueryBuilder } from '../query-builder/InsertQueryBuilder';
 
@@ -63,7 +63,7 @@ export class DbQueryResultCache implements QueryResultCache {
         if (tableExist)
             return;
 
-        if(queryRunner.connection.driver instanceof HanaColumnDriver) {
+        if(queryRunner.connection.driver instanceof HanaDriver) {
             queryRunner.createSequence(new Sequence(this.getCacheTableSequenceName()));
         }
 
@@ -76,8 +76,8 @@ export class DbQueryResultCache implements QueryResultCache {
                         isPrimary: true,
                         isNullable: false,
                         type: driver.normalizeType({type: driver.mappedDataTypes.cacheId}),
-                        generationStrategy: queryRunner.connection.driver instanceof HanaColumnDriver ? "sequence" : "increment",
-                        sequenceName: queryRunner.connection.driver instanceof HanaColumnDriver ? this.getCacheTableSequenceName() : undefined,
+                        generationStrategy: queryRunner.connection.driver instanceof HanaDriver ? "sequence" : "increment",
+                        sequenceName: queryRunner.connection.driver instanceof HanaDriver ? this.getCacheTableSequenceName() : undefined,
                         isGenerated: true
                     },
                     {
@@ -197,7 +197,7 @@ export class DbQueryResultCache implements QueryResultCache {
             await qb.execute();
 
         } else { // otherwise insert
-            if (this.connection.driver instanceof HanaColumnDriver) {
+            if (this.connection.driver instanceof HanaDriver) {
                 const seqId = await InsertQueryBuilder.idGenerator.getId(queryRunner, false, this.getCacheTableSequenceName());
                 insertedValues = {
                     id: seqId,

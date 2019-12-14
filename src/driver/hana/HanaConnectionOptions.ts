@@ -37,6 +37,11 @@ export interface HanaConnectionOptions extends BaseConnectionOptions, HanaConnec
     readonly database?: string;
 
     /**
+     * Database table type.
+     */
+    readonly tableType?: "row" | "column";
+
+    /**
      * An optional object/dictionary with the any of the properties
      */
     readonly pool?: {

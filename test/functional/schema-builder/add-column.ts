@@ -5,7 +5,7 @@ import {closeTestingConnections, createTestingConnections} from "../../utils/tes
 import {ColumnMetadata} from "../../../src/metadata/ColumnMetadata";
 import {ColumnMetadataArgs} from "../../../src/metadata-args/ColumnMetadataArgs";
 import {Post} from "./entity/Post";
-import { HanaColumnDriver } from '../../../src/driver/hana/HanaColumnDriver';
+import { HanaDriver } from '../../../src/driver/hana/HanaDriver';
 
 describe("schema builder > add column", () => {
 
@@ -21,7 +21,7 @@ describe("schema builder > add column", () => {
 
     it("should correctly add column", () => Promise.all(connections.map(async connection => {
         
-        if (connection.driver instanceof HanaColumnDriver) { // TODO HANA - changeColumn() missing
+        if (connection.driver instanceof HanaDriver) { // TODO HANA - changeColumn() missing
             return;
         }
         
