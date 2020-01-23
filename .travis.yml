@@ -6,6 +6,13 @@ node_js:
 
 services:
   - docker
+  
+install: travis_wait 30 dockerize
+  
+before_install: 
+  - wget https://github.com/jwilder/dockerize/releases/download/v0.6.1/dockerize-linux-amd64-v0.6.1.tar.gz -O /tmp/dockerize.tar.gz
+  - tar -xvf /tmp/dockerize.tar.gz
+  - export PATH=$PATH:$PWD/dockerize/
 
 before_script:
   - sudo service mysql stop
@@ -16,7 +23,7 @@ before_script:
 
 script:
   - npm run lint
-  - sleep 15m 30s
+  - dockerize -wait tcp://localhost:39017 -timeout 15m
   - npx nyc npm test
 
 after_success:
