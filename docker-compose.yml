@@ -8,7 +8,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 6g
+          memory: 6500m
     container_name: "typeorm-hanaexpress"
     hostname: hxe
     command: ['--passwords-url', 'https://raw.githubusercontent.com/typeorm/typeorm/b119f7c3b8748aea9c77c7bc42b8e1be209b43ec/docker/hana/hxe-config.json', '--agree-to-sap-license']
