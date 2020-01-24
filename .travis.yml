@@ -19,6 +19,7 @@ before_script:
   - cp ormconfig.travis.json ormconfig.json
 
 script:
+  - bash show_memory.sh &
   - npm run lint
   - dockerize -wait tcp://localhost:39041 -timeout 15m
   - sleep 7m
