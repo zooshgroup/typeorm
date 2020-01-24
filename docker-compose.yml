@@ -5,10 +5,11 @@ services:
   # sap hana (works only on linux)
   hanaexpress:
     image: "store/saplabs/hanaexpress:2.00.040.00.20190729.1"
+    mem_limit: 5g
     deploy:
       resources:
         limits:
-          memory: 6G
+          memory: 5g
     container_name: "typeorm-hanaexpress"
     hostname: hxe
     command: ['--passwords-url', 'https://raw.githubusercontent.com/typeorm/typeorm/b119f7c3b8748aea9c77c7bc42b8e1be209b43ec/docker/hana/hxe-config.json', '--agree-to-sap-license']
