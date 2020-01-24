@@ -14,9 +14,8 @@ before_install:
 before_script:
   - sudo service mysql stop
   - sudo service postgresql stop
-  - docker-compose --version
   - echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USER" --password-stdin;
-  - docker-compose up -d
+  - docker-compose up -d --compatibility
   - cp ormconfig.travis.json ormconfig.json
 
 script:

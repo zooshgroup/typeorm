@@ -5,7 +5,6 @@ services:
   # sap hana (works only on linux)
   hanaexpress:
     image: "store/saplabs/hanaexpress:2.00.040.00.20190729.1"
-    mem_limit: 5g
     deploy:
       resources:
         limits:
