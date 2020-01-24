@@ -23,6 +23,7 @@ script:
   - dockerize -wait tcp://localhost:39041 -timeout 15m
   - sleep 7m
   - sleep 7m
+  - free -m
   - npx nyc npm test
 
 after_success:
