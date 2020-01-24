@@ -5,6 +5,10 @@ services:
   # sap hana (works only on linux)
   hanaexpress:
     image: "store/saplabs/hanaexpress:2.00.040.00.20190729.1"
+    deploy:
+      resources:
+        limits:
+          memory: 6G
     container_name: "typeorm-hanaexpress"
     hostname: hxe
     command: ['--passwords-url', 'https://raw.githubusercontent.com/typeorm/typeorm/b119f7c3b8748aea9c77c7bc42b8e1be209b43ec/docker/hana/hxe-config.json', '--agree-to-sap-license']
@@ -17,7 +21,6 @@ services:
       - kernel.shmall=8388608
     ports:
       - 39013:39013
-      - 39015:39015
       - 39017:39017
       - 39041-39045:39041-39045
       - 1128-1129:1128-1129
