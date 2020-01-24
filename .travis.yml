@@ -20,7 +20,7 @@ before_script:
 
 script:
   - npm run lint
-  - dockerize -wait tcp://localhost:39015 -timeout 15m
+  - dockerize -wait tcp://localhost:39041 -timeout 15m
   - sleep 7m
   - sleep 7m
   - npx nyc npm test
