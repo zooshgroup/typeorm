@@ -10,6 +10,7 @@ services:
 before_install: 
   - wget https://github.com/jwilder/dockerize/releases/download/v0.6.1/dockerize-linux-amd64-v0.6.1.tar.gz -O /tmp/dockerize.tar.gz
   - sudo tar -C /usr/local/bin -xzvf /tmp/dockerize.tar.gz
+  - npm install @sap/hana-client --loglevel verbose
 
 before_script:
   - sudo service mysql stop
@@ -19,7 +20,6 @@ before_script:
   - cp ormconfig.travis.json ormconfig.json
 
 script:
-  - npm install @sap/hana-client --loglevel verbose
   - bash show_memory.sh &
   - npm run lint
   - dockerize -wait tcp://localhost:39041 -timeout 15m
