@@ -1,6 +1,5 @@
 language: node_js
 node_js:
-  - 13
   - 12
   - 10
 
@@ -10,7 +9,6 @@ services:
 before_install: 
   - wget https://github.com/jwilder/dockerize/releases/download/v0.6.1/dockerize-linux-amd64-v0.6.1.tar.gz -O /tmp/dockerize.tar.gz
   - sudo tar -C /usr/local/bin -xzvf /tmp/dockerize.tar.gz
-  - npm install @sap/hana-client --loglevel silly
 
 before_script:
   - sudo service mysql stop
@@ -25,7 +23,6 @@ script:
   - dockerize -wait tcp://localhost:39041 -timeout 15m
   - sleep 7m
   - sleep 7m
-  - free -m
   - npx nyc npm test
 
 after_success:
